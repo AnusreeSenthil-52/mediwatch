@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MEDIWATCH | Patient Lab</title>
+<style>
+:root{--navy:#142d3a;--teal:#167d72;--bg:#f3f7f8;--ink:#19323e;--muted:#637984;--line:#d8e4e7;--red:#c63d4f}
+*{box-sizing:border-box}body{margin:0;font:16px/1.5 "Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:var(--navy);color:white;padding:18px clamp(18px,4vw,48px);display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+header a{color:#c9f5ec;text-decoration:none}main{max-width:1100px;margin:28px auto;padding:0 18px}.hero{margin-bottom:22px}.hero h1{margin:0 0 6px;font-size:clamp(26px,4vw,36px)}.hero p{color:var(--muted);margin:0}
+.layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr);gap:18px}.card{background:white;border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 6px 22px #173b4b0a}.card h2{margin:0 0 6px;font-size:21px}.hint{color:var(--muted);font-size:14px;margin:0 0 18px}.fields{display:grid;grid-template-columns:1fr 1fr;gap:14px}.field label{display:block;font-weight:650;font-size:14px;margin-bottom:6px}.field input,.field select{width:100%;padding:12px;border:1px solid #bdcfd5;border-radius:10px;font:inherit;background:white}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}button{border:0;border-radius:10px;padding:12px 17px;font:inherit;font-weight:700;cursor:pointer}.primary{background:var(--teal);color:white}.secondary{background:#e8f0f2;color:var(--ink)}.status{margin-top:15px;padding:13px;border-radius:10px;display:none;white-space:pre-wrap}.status.ok{display:block;background:#e6f7ef;color:#146344}.status.err{display:block;background:#fff0f0;color:#9c2636}.note{border-left:4px solid #e2a33b;background:#fff8e8;padding:13px 15px;border-radius:6px;color:#654d1b;font-size:14px;margin-top:16px}.list{display:grid;gap:12px;margin-top:16px}.item{padding:13px;border:1px solid var(--line);border-radius:12px}.item b{display:block}.muted{color:var(--muted);font-size:14px}.pill{display:inline-block;background:#e5f4f1;color:#176a61;border-radius:99px;padding:4px 9px;font-size:12px;font-weight:700}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.fields{grid-template-columns:1fr 1fr}}@media(max-width:460px){.fields{grid-template-columns:1fr}}
+</style></head><body>
+<header><strong>♥ MEDIWATCH <span style="font-weight:400;color:#c5d7dd">/ Patient Lab</span></strong><nav><a href="/">← Back to ICU Studio</a>　<a href="/dashboard">Dashboard</a></nav></header>
+<main><section class="hero"><h1>Manual Patient Readings</h1><p>Choose a bed, enter your own vital signs and publish them to the running monitoring engine.</p></section>
+<div class="layout"><section class="card"><h2>Enter vital signs</h2><p class="hint">Start the simulation in ICU Studio first. Values are validated before being sent.</p>
+<div class="fields"><div class="field"><label for="bed">Patient bed</label><select id="bed"><option value="bed1">Bed 1</option><option value="bed2">Bed 2</option><option value="bed3">Bed 3</option><option value="bed4">Bed 4</option></select></div>
+<div class="field"><label for="hr">Heart rate (bpm)</label><input id="hr" type="number" min="20" max="250" value="145"></div>
+<div class="field"><label for="spo2">SpO₂ (%)</label><input id="spo2" type="number" min="50" max="100" value="85"></div>
+<div class="field"><label for="rr">Respiratory rate (/min)</label><input id="rr" type="number" min="1" max="70" value="30"></div>
+<div class="field"><label for="sbp">Systolic BP (mmHg)</label><input id="sbp" type="number" min="40" max="250" value="90"></div>
+<div class="field"><label for="temp">Temperature (°C)</label><input id="temp" type="number" min="25" max="45" step="0.1" value="39.5"></div></div>
+<div class="actions"><button class="primary" id="apply">Apply readings</button><button class="secondary" id="normal">Load example normal values</button><button class="secondary" id="clear">Clear manual values</button></div><div id="status" class="status"></div>
+<div class="note"><b>Simulation only:</b> these inputs are for software testing, not diagnosis or treatment. Extreme values are used to test alert behaviour and should not be interpreted as medical advice.</div></section>
+<aside class="card"><h2>How to test</h2><p class="hint">Use a controlled sequence and observe the Events and MQTT monitor tabs in the ICU Studio.</p><div class="list">
+<div class="item"><span class="pill">1 · Start</span><b>Start simulation</b><span class="muted">Return to the ICU Studio and press Start simulation.</span></div>
+<div class="item"><span class="pill">2 · Inject</span><b>Apply readings</b><span class="muted">Choose the configured bed ID and send test values.</span></div>
+<div class="item"><span class="pill">3 · Observe</span><b>Check the response</b><span class="muted">Review the event log, risk score and simulated actuator events.</span></div>
+<div class="item"><span class="pill">4 · Record</span><b>Save evidence</b><span class="muted">Capture timestamps and compare runs for your report.</span></div></div>
+<div class="note">Manual readings are published to MQTT topics consumed by the monitoring engine. Manual values stay in force until care arrives (the readings then recover gradually towards normal), you press Clear manual values, or 180 simulated seconds pass.</div></aside></div></main>
+<script>
+const $=id=>document.getElementById(id);
+$("normal").onclick=()=>{ $("hr").value=78;$("spo2").value=98;$("rr").value=15;$("sbp").value=120;$("temp").value=36.8; };
+$("clear").onclick=async()=>{const status=$("status");status.style.display="block";try{const r=await fetch("/api/manual-readings/clear/"+encodeURIComponent($("bed").value),{method:"POST"});const d=await r.json();if(!r.ok)throw new Error(d.error||"Request failed");status.className="status ok";status.textContent="Manual values cleared for "+d.bed+"; readings are recovering to the simulated patient.";}catch(e){status.className="status err";status.textContent=e.message;}};
+$("apply").onclick=async()=>{const status=$("status");status.className="status";status.style.display="block";status.textContent="Sending readings…";
+const values={};for(const k of ["hr","spo2","rr","sbp","temp"]){const el=$(k);if(el.value!=="")values[k]=Number(el.value);}
+try{const r=await fetch("/api/manual-readings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({bed:$("bed").value,values})});const data=await r.json();if(!r.ok)throw new Error(data.error||"Request failed");status.className="status ok";status.textContent="Readings published for "+data.bed+".\\n"+JSON.stringify(data.sent,null,2)+"\\n\\n"+data.message;}catch(e){status.className="status err";status.textContent=e.message;}};
+</script></body></html>

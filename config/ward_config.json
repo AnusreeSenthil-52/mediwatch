@@ -1,0 +1,138 @@
+{
+  "mode": "predictive",
+  "speed": 5,
+  "duration_s": 900,
+  "seed": 42,
+  "mqtt": {
+    "host": "localhost",
+    "port": 1883
+  },
+  "sensor_defaults": {
+    "hr": {
+      "interval_s": 1,
+      "noise": 2.0,
+      "dropout": 0.02
+    },
+    "spo2": {
+      "interval_s": 1,
+      "noise": 0.7,
+      "dropout": 0.02
+    },
+    "rr": {
+      "interval_s": 2,
+      "noise": 1.0,
+      "dropout": 0.02
+    },
+    "sbp": {
+      "interval_s": 5,
+      "noise": 4.0,
+      "dropout": 0.02
+    },
+    "temp": {
+      "interval_s": 10,
+      "noise": 0.1,
+      "dropout": 0.02
+    },
+    "consciousness": {
+      "interval_s": 5,
+      "noise": 0.0,
+      "dropout": 0.0
+    },
+    "fall": {
+      "interval_s": 1,
+      "noise": 0.0,
+      "dropout": 0.0
+    },
+    "bed_occupancy": {
+      "interval_s": 2,
+      "noise": 0.0,
+      "dropout": 0.0
+    }
+  },
+  "beds": [
+    {
+      "id": "bed1",
+      "name": "Arun",
+      "age": 54,
+      "condition": "Post-op day 1",
+      "scenario": "stable",
+      "sensors": [
+        "hr",
+        "spo2",
+        "rr",
+        "sbp",
+        "temp",
+        "consciousness"
+      ],
+      "actuators": [
+        "alarm",
+        "nurse_call",
+        "oxygen",
+        "bed_motor"
+      ]
+    },
+    {
+      "id": "bed2",
+      "name": "Meena",
+      "age": 67,
+      "condition": "Pneumonia",
+      "scenario": "slow_deterioration",
+      "sensors": [
+        "hr",
+        "spo2",
+        "rr",
+        "sbp",
+        "temp",
+        "consciousness"
+      ],
+      "actuators": [
+        "alarm",
+        "nurse_call",
+        "oxygen",
+        "bed_motor"
+      ]
+    },
+    {
+      "id": "bed3",
+      "name": "Karthik",
+      "age": 45,
+      "condition": "Sepsis watch",
+      "scenario": "slow_deterioration",
+      "sensors": [
+        "hr",
+        "spo2",
+        "rr",
+        "sbp",
+        "temp",
+        "consciousness"
+      ],
+      "actuators": [
+        "alarm",
+        "nurse_call",
+        "oxygen",
+        "bed_motor"
+      ]
+    },
+    {
+      "id": "bed4",
+      "name": "Lakshmi",
+      "age": 72,
+      "condition": "Cardiac",
+      "scenario": "sudden_collapse",
+      "sensors": [
+        "hr",
+        "spo2",
+        "rr",
+        "sbp",
+        "temp",
+        "consciousness"
+      ],
+      "actuators": [
+        "alarm",
+        "nurse_call",
+        "oxygen",
+        "bed_motor"
+      ]
+    }
+  ]
+}

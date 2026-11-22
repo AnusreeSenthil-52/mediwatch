@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ICU Simulation Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bar: #1F2A30; --bar-ink: #E9EEF0; --bar-muted: #9AAAB3;
+  --canvas: #ECEFEB; --dot: rgba(31,42,48,.11); --paper: #FFFFFF; --panel: #F7F8F7;
+  --ink: #1B262C; --muted: #5F6E76; --line: #CCD5CF;
+  --pcb: #1E6A58; --pcb-ink: #E6F4EE; --mod: #2F3B44; --chip: #1C2226;
+  --w-sensor: #2E9B62; --w-act: #DE832C; --w-up: #3B73B0; --w-sys: #77858D;
+  --green: #4E9A55; --yellow: #E2BC2E; --orange: #E27B2E; --red: #CC3333; --go: #2EA44F;
+  --font: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { font: 14px/1.4 var(--font); color: var(--ink); background: var(--canvas);
+       display: grid; grid-template-rows: 52px minmax(0, 1fr) 250px; overflow: hidden; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--w-up); outline-offset: 2px; }
+
+/* ---------- top bar ---------- */
+.top { background: var(--bar); color: var(--bar-ink); display: flex; align-items: center; gap: 14px; padding: 0 14px; white-space: nowrap; overflow-x: auto; }
+.brand { font-weight: 700; font-size: 16px; margin-right: 6px; }
+.play { display: inline-flex; align-items: center; gap: 8px; background: var(--go); color: #fff; border: 0; border-radius: 18px; padding: 7px 16px 7px 12px; font-weight: 700; cursor: pointer; }
+.play svg { width: 16px; height: 16px; }
+.play:disabled { background: #4C5A61; cursor: default; }
+.ghost { background: transparent; border: 1px solid #56656D; color: var(--bar-ink); border-radius: 18px; padding: 6px 14px; cursor: pointer; }
+.ghost:disabled { opacity: .4; cursor: default; }
+.seg { display: inline-flex; border: 1px solid #56656D; border-radius: 18px; overflow: hidden; }
+.seg button { background: none; border: 0; color: var(--bar-muted); padding: 6px 12px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--bar-ink); color: var(--bar); font-weight: 700; }
+.seg button:disabled { cursor: default; }
+.top select { background: #2B373E; border: 1px solid #56656D; border-radius: 6px; padding: 4px 6px; color: var(--bar-ink); }
+.top .meta { color: var(--bar-muted); }
+.top .meta b { color: var(--bar-ink); font-variant-numeric: tabular-nums; }
+.broker { margin-left: auto; display: inline-flex; align-items: center; gap: 7px; color: var(--bar-muted); }
+.broker i { width: 9px; height: 9px; border-radius: 50%; background: var(--red); }
+.broker.ok i { background: #47D16C; }
+
+/* ---------- main area ---------- */
+.app { display: grid; grid-template-columns: 200px minmax(0, 1fr) 290px; min-height: 0; }
+.parts, .attrs { background: var(--panel); overflow-y: auto; padding: 12px; }
+.parts { border-right: 1px solid var(--line); }
+.attrs { border-left: 1px solid var(--line); }
+.parts h2, .attrs h2 { font-size: 13px; color: var(--muted); margin: 14px 0 6px; font-weight: 700; }
+.parts h2:first-child, .attrs h2:first-child { margin-top: 0; }
+.part { display: flex; align-items: center; gap: 8px; padding: 6px 8px; margin-bottom: 5px; border-radius: 6px; cursor: grab; user-select: none; color: var(--pcb-ink); }
+.part.sensor { background: var(--pcb); }
+.part.actuator { background: var(--mod); }
+.part svg { width: 18px; height: 18px; flex: none; }
+.locked .part { opacity: .45; cursor: not-allowed; }
+.hint { color: var(--muted); font-size: 12.5px; margin: 6px 0 10px; }
+.btn { border: 1px solid var(--ink); background: var(--paper); border-radius: 6px; padding: 5px 12px; cursor: pointer; }
+.btn.wide { width: 100%; }
+.btn.danger { border-color: var(--red); color: var(--red); }
+.btn.go { background: var(--ink); color: #fff; }
+.btn:disabled { opacity: .45; cursor: default; }
+#saveMsg { font-size: 12px; color: var(--muted); min-height: 1.4em; margin-top: 8px; }
+
+.wrap { overflow: auto; position: relative; background-color: var(--canvas);
+        background-image: radial-gradient(var(--dot) 1.2px, transparent 1.2px); background-size: 18px 18px; }
+#canvas { position: relative; min-width: 940px; padding: 22px 28px 40px; }
+.wires { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
+#wiresFront { z-index: 1; }                 /* bedside wires: above the bed card, below the parts */
+.mod, .gw, .node { z-index: 2; }
+.wire { fill: none; stroke-width: 2.2; stroke-linecap: round; opacity: .7; }
+.wire.sensor { stroke: var(--w-sensor); } .wire.actuator { stroke: var(--w-act); }
+.wire.up { stroke: var(--w-up); opacity: .45; } .wire.sys { stroke: var(--w-sys); stroke-width: 3; }
+.wire.hot { opacity: 1; stroke-width: 3.4; stroke-dasharray: 7 6; animation: flow .5s linear infinite; }
+.wire.up.hot { opacity: .95; }
+@keyframes flow { to { stroke-dashoffset: -26; } }
+
+.sysrow { display: flex; justify-content: center; gap: 70px; }
+.node { background: var(--chip); color: #E8EEF1; border-radius: 8px; padding: 9px 14px; min-width: 150px; text-align: center; cursor: pointer; position: relative; border: 2px solid transparent; }
+.node b { display: block; font-size: 14px; }
+.node small { color: #9FB0B8; font-size: 12px; }
+.node.broker-node { background: #24476B; }
+
+#boards { display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 30px 34px; margin-top: 96px; }
+.board { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; position: relative; --band: #9AA7AD; }
+.board.over { outline: 3px dashed var(--w-up); outline-offset: 3px; }
+.board.band-low { --band: var(--green); } .board.band-low-medium { --band: var(--yellow); }
+.board.band-medium { --band: var(--orange); } .board.band-high { --band: var(--red); }
+.board.state-emergency { box-shadow: 0 0 0 3px var(--red); }
+.board.state-early { box-shadow: 0 0 0 3px var(--orange); }
+.bhead { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.bhead .bn { font-weight: 700; }
+.bhead .pn { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.badge { margin-left: auto; min-width: 46px; text-align: center; border-radius: 14px; padding: 2px 10px; background: var(--band); color: #fff; font-weight: 700; font-variant-numeric: tabular-nums; }
+.band-low-medium .badge { color: #1B262C; }
+.bbody { display: grid; grid-template-columns: 146px 1fr 136px; gap: 10px; padding: 12px; min-height: 236px; }
+.zone { display: flex; flex-direction: column; gap: 6px; }
+.ph { border: 1px dashed var(--line); border-radius: 6px; color: var(--muted); font-size: 12px; padding: 10px 8px; text-align: center; }
+.locked .ph { display: none; }
+.mod { display: flex; align-items: center; gap: 7px; border-radius: 6px; padding: 5px 8px; color: var(--pcb-ink); cursor: pointer; position: relative; border: 2px solid transparent; }
+.mod.sensor { background: var(--pcb); }
+.mod.actuator { background: var(--mod); }
+.mod svg { width: 16px; height: 16px; flex: none; }
+.mod .ml { font-size: 12.5px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mod .val { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 13px; }
+.mod .led { width: 7px; height: 7px; border-radius: 50%; background: #0F3B30; flex: none; }
+.mod .led.hot { background: #7CFFB2; box-shadow: 0 0 6px #7CFFB2; }
+.mod.off .val { color: #F3B0A0; }
+.mod.actuator .lamp { width: 10px; height: 10px; border-radius: 50%; background: #4A5761; flex: none; }
+.mod.actuator.on .lamp { background: #FFB347; box-shadow: 0 0 8px #FFB347; }
+.mod.actuator[data-kind="alarm"].on .lamp { background: #FF4D4D; box-shadow: 0 0 10px #FF4D4D; animation: blink .6s steps(2) infinite; }
+.mod.actuator .st { font-size: 11px; color: #A9B6BD; }
+.mod.actuator.on .st { color: #FFD08A; font-weight: 700; }
+@keyframes blink { 50% { opacity: .25; } }
+.sel { border-color: #7FB2FF !important; }
+.center { display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 8px; }
+.patient { width: 100%; max-width: 170px; }
+.patient .mat { fill: color-mix(in srgb, var(--band) 30%, white); stroke: var(--band); }
+.patient .upper { transform-origin: 46px 58px; transition: transform .6s; }
+.board.raised .patient .upper { transform: rotate(-24deg); }
+.gw { background: var(--chip); color: #DDE6EA; border-radius: 6px; padding: 6px 12px; font-size: 12px; text-align: center; position: relative; cursor: pointer; border: 2px solid transparent; }
+.gw::before, .gw::after { content: ""; position: absolute; left: 8px; right: 8px; height: 3px; background: repeating-linear-gradient(90deg, #B9C4C9 0 3px, transparent 3px 7px); }
+.gw::before { top: -5px; } .gw::after { bottom: -5px; }
+.gw b { display: block; font-size: 12.5px; }
+.bfoot { display: flex; gap: 10px; align-items: center; border-top: 1px solid var(--line); padding: 8px 12px; font-size: 12.5px; color: var(--muted); min-height: 44px; }
+.bfoot span { flex: 1; }
+.bfoot b { color: var(--ink); }
+.addbed { border: 2px dashed var(--line); border-radius: 10px; display: flex; align-items: center; justify-content: center; min-height: 160px; color: var(--muted); background: transparent; cursor: pointer; font-size: 15px; }
+.locked .addbed { display: none; }
+
+/* ---------- attributes ---------- */
+.attrs .title { font-size: 16px; font-weight: 700; margin: 0 0 2px; }
+.attrs .sub { color: var(--muted); font-size: 12.5px; margin-bottom: 10px; }
+.attrs label.f { display: flex; flex-direction: column; gap: 3px; margin-bottom: 9px; font-size: 12.5px; color: var(--muted); }
+.attrs input[type=text], .attrs input[type=number], .attrs select { background: #fff; border: 1px solid var(--line); border-radius: 5px; padding: 5px 7px; width: 100%; color: var(--ink); }
+.attrs .topic { font-family: var(--mono); font-size: 12px; background: #fff; border: 1px solid var(--line); border-radius: 5px; padding: 4px 6px; word-break: break-all; }
+.attrs table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.attrs td { padding: 3px 0; border-bottom: 1px solid var(--line); }
+.attrs td.n { text-align: right; font-variant-numeric: tabular-nums; }
+.big { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.switch { display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 8px 0; }
+.stack > * + * { margin-top: 8px; }
+
+/* ---------- dock ---------- */
+.dock { background: var(--paper); border-top: 1px solid var(--line); display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; }
+.dtabs { display: flex; align-items: center; gap: 2px; padding: 0 10px; border-bottom: 1px solid var(--line); }
+.dtabs button.t { background: none; border: 0; border-bottom: 3px solid transparent; padding: 8px 12px; cursor: pointer; color: var(--muted); }
+.dtabs button.t[aria-selected="true"] { color: var(--ink); border-color: var(--ink); font-weight: 700; }
+.dtabs .tools { margin-left: auto; display: flex; gap: 10px; align-items: center; font-size: 12.5px; color: var(--muted); }
+.dtabs .tools input[type=text] { border: 1px solid var(--line); border-radius: 5px; padding: 3px 7px; width: 170px; }
+.pane { display: none; overflow: auto; min-height: 0; }
+.pane.active { display: block; }
+#mq { font-family: var(--mono); font-size: 12px; margin: 0; padding: 6px 12px; list-style: none; }
+#mq li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 1px 0; }
+#mq time, #ev time { color: var(--muted); margin-right: 8px; font-variant-numeric: tabular-nums; }
+#mq .tp { color: var(--w-up); margin-right: 8px; }
+#mq .tp.cmd { color: var(--w-act); }
+#ev { list-style: none; margin: 0; padding: 6px 12px; }
+#ev li { padding: 5px 0 5px 10px; border-left: 3px solid var(--line); margin-bottom: 3px; }
+#ev li.emergency { border-color: var(--red); } #ev li.early, #ev li.prediction { border-color: var(--orange); }
+#ev li.recovered, #ev li.arrival { border-color: var(--green); }
+#res { padding: 10px 14px; }
+#res table { border-collapse: collapse; font-size: 13px; }
+#res th, #res td { padding: 4px 10px; border-bottom: 1px solid var(--line); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#res th:first-child, #res td:first-child { text-align: left; }
+#res th { color: var(--muted); font-size: 12px; }
+.empty { color: var(--muted); }
+.toast { position: fixed; right: 22px; bottom: 22px; left: auto; top: auto; transform: none; background: var(--red); color: #fff; padding: 9px 16px; border-radius: 6px; z-index: 10; max-width: 90vw; display: none; }
+
+@media (max-width: 900px) {
+  body { grid-template-rows: auto minmax(0, 1fr) 220px; }
+  .app { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr) auto; }
+  .parts { display: flex; gap: 6px; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .parts h2, .parts .hint, #saveMsg { display: none; }
+  .part { flex: none; }
+  .attrs { max-height: 34vh; border-left: 0; border-top: 1px solid var(--line); }
+}
+@media (prefers-reduced-motion: reduce) { .wire.hot, .mod.actuator[data-kind="alarm"].on .lamp { animation: none; } .patient .upper { transition: none; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <span class="brand">ICU Simulation Studio</span>
+  <button class="play" id="startBtn"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg>Start simulation</button>
+  <button class="ghost" id="stopBtn" disabled>Stop</button>
+  <div class="seg" role="group" aria-label="Mode">
+    <button data-mode="reactive" aria-pressed="false">Reactive</button>
+    <button data-mode="predictive" aria-pressed="true">Predictive</button>
+  </div>
+  <label class="meta">Speed <select id="speed"><option value="1">1×</option><option value="5">5×</option><option value="10">10×</option><option value="20">20×</option></select></label>
+  <span class="meta">Sim time <b id="clock">0:00</b> / <b id="dur">15:00</b></span>
+  <span class="broker" id="broker"><i></i><span>Connecting to server…</span></span>
+</header>
+
+<div class="app">
+  <aside class="parts" id="parts">
+    <h2>Sensors</h2>
+    <div id="partsSensors"></div>
+    <h2>Actuators</h2>
+    <div id="partsActs"></div>
+    <p class="hint">Drag a part onto a bed. Click any part, bed or box on the canvas to see its settings.</p>
+    <div id="saveMsg"></div>
+  </aside>
+
+  <main class="wrap" id="wrap">
+    <div id="canvas">
+      <svg id="wiresBack" class="wires"></svg>
+      <svg id="wiresFront" class="wires"></svg>
+      <div class="sysrow">
+        <div class="node" id="node-web" data-sel="node:web"><b>FastAPI server</b><small>WebSocket to this page</small></div>
+        <div class="node broker-node" id="node-broker" data-sel="node:broker"><b>Mosquitto broker</b><small id="rate">0 msg/s</small></div>
+        <div class="node" id="node-engine" data-sel="node:engine"><b>Central engine</b><small>NEWS2, rules, look-ahead</small></div>
+        <div class="node" id="node-db" data-sel="node:db"><b>SQLite</b><small>sim.db</small></div>
+      </div>
+      <div id="boards"></div>
+    </div>
+  </main>
+
+  <aside class="attrs" id="attrs"></aside>
+</div>
+
+<section class="dock">
+  <div class="dtabs" role="tablist">
+    <button class="t" data-pane="mqPane" aria-selected="true">MQTT monitor</button>
+    <button class="t" data-pane="evPane" aria-selected="false">Events</button>
+    <button class="t" data-pane="resPane" aria-selected="false">Results</button>
+    <div class="tools" id="mqTools">
+      <input type="text" id="mqFilter" placeholder="Filter topic, e.g. bed2/cmd" aria-label="Filter topics">
+      <label><input type="checkbox" id="mqHideStatus" checked> Hide status</label>
+      <label><input type="checkbox" id="mqAuto" checked> Auto-scroll</label>
+      <button class="btn" id="mqClear">Clear</button>
+    </div>
+  </div>
+  <div class="pane active" id="mqPane"><ul id="mq"><li class="empty">Messages appear here when the simulation runs.</li></ul></div>
+  <div class="pane" id="evPane"><ul id="ev"><li class="empty">No events yet.</li></ul></div>
+  <div class="pane" id="resPane"><div id="res">
+    <p class="hint" style="margin-top:0">Runs the current setup twice through Mosquitto at 200× speed, once reactive and once predictive, then reads both runs from sim.db.</p>
+    <button class="btn go" id="cmpBtn">Run comparison</button> <button class="btn" id="resLoad">Show last results</button>
+    <span id="cmpMsg" class="empty"></span>
+    <div id="resTable" style="margin-top:12px; overflow-x:auto"></div>
+  </div></div>
+</section>
+<div class="toast" id="toast" role="alert"></div>
+
+<script>
+"use strict";
+const SENSORS = ["hr", "spo2", "rr", "sbp", "temp", "consciousness"];
+const ACTUATORS = ["alarm", "nurse_call", "oxygen", "bed_motor"];
+const PART = {
+  hr:            { name: "Pulse sensor", short: "Pulse", unit: "bpm", what: "Heart rate in beats per minute." },
+  spo2:          { name: "Pulse oximeter", short: "SpO\u2082", unit: "%", what: "Blood oxygen saturation." },
+  rr:            { name: "Respiration sensor", short: "Resp", unit: "/min", what: "Breaths per minute." },
+  sbp:           { name: "BP cuff", short: "Sys BP", unit: "mmHg", what: "Systolic blood pressure. A cuff reads slowly, every few seconds." },
+  temp:          { name: "Thermometer", short: "Temp", unit: "\u00b0C", what: "Body temperature." },
+  consciousness: { name: "ACVPU check", short: "ACVPU", unit: "", what: "Level of consciousness: A = alert, otherwise V, P or U." },
+  alarm:         { name: "Alarm buzzer", short: "Alarm", what: "Sounds the alarm and calls the emergency team (block 6a)." },
+  nurse_call:    { name: "Nurse call", short: "Nurse", what: "Asks a nurse to come and check the patient (block 6b)." },
+  oxygen:        { name: "Oxygen valve", short: "O\u2082", what: "Opens supplemental oxygen. Raises SpO\u2082 and slows decline." },
+  bed_motor:     { name: "Bed motor", short: "Bed tilt", what: "Raises the head of the bed to ease breathing." },
+};
+const ICON = {
+  hr: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+  spo2: '<path d="M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11z"/>',
+  rr: '<path d="M12 3v8M12 9c-2.5 0-6 2.5-6 8 0 2 1.2 3 2.8 3 2 0 3.2-2 3.2-5M12 9c2.5 0 6 2.5 6 8 0 2-1.2 3-2.8 3-2 0-3.2-2-3.2-5"/>',
+  sbp: '<circle cx="12" cy="13" r="7"/><path d="M12 13l4-4M12 3v3"/>',
+  temp: '<path d="M10 4a2 2 0 0 1 4 0v9.5a4 4 0 1 1-4 0z"/><path d="M12 9v7"/>',
+  consciousness: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  alarm: '<path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/>',
+  nurse_call: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/>',
+  oxygen: '<rect x="8" y="6" width="8" height="15" rx="3"/><path d="M10 6V3h4v3"/>',
+  bed_motor: '<path d="M3 19h18M3 19V9M5 15l7-4h7v4"/>',
+};
+const icon = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
+const SCEN_LABEL = { stable: "Stable", slow_deterioration: "Slow deterioration", sudden_collapse: "Sudden collapse" };
+const BAND_TEXT = { low: "Low risk", "low-medium": "Low-medium", medium: "Medium risk", high: "High risk" };
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmt = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+const $ = id => document.getElementById(id);
+
+let cfg = null, rules = null, scenarios = [];
+let srv = { broker: false, running: false, comparing: false, mode: null };
+let selected = null;                          // "bed:bed1" | "dev:bed1:hr" | "node:broker"
+const live = { values: {}, acts: {}, status: {}, probeOff: {}, t: 0 };
+const hits = {};                              // wire / led id -> last activity time
+let mqLines = [], mqDirty = false, msgTimes = [];
+
+/* ----------------------------- server API ----------------------------- */
+async function api(path, body) {
+  const res = await fetch(path, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  return data;
+}
+function toast(text) { const t = $("toast"); t.textContent = text; t.style.display = "block"; clearTimeout(toast.h); toast.h = setTimeout(() => (t.style.display = "none"), 5000); }
+let saveTimer = null;
+function save() {
+  clearTimeout(saveTimer);
+  $("saveMsg").textContent = "Saving…";
+  saveTimer = setTimeout(async () => {
+    try { await api("/api/config", cfg); $("saveMsg").textContent = "Saved to config/ward_config.json"; }
+    catch (e) { $("saveMsg").textContent = e.message; }
+  }, 300);
+}
+
+/* ----------------------------- parts palette ----------------------------- */
+let dragKind = null;
+function renderPalette() {
+  const item = k => `<div class="part ${SENSORS.includes(k) ? "sensor" : "actuator"}" draggable="true" data-kind="${k}">${icon(k)}${PART[k].name}</div>`;
+  $("partsSensors").innerHTML = SENSORS.map(item).join("");
+  $("partsActs").innerHTML = ACTUATORS.map(item).join("");
+}
+$("parts").addEventListener("dragstart", e => {
+  const p = e.target.closest(".part");
+  if (!p || srv.running) { e.preventDefault(); return; }
+  dragKind = p.dataset.kind; e.dataTransfer.setData("text/plain", dragKind); e.dataTransfer.effectAllowed = "copy";
+});
+$("parts").addEventListener("dragend", () => { dragKind = null; document.querySelectorAll(".board.over").forEach(b => b.classList.remove("over")); });
+
+/* ----------------------------- canvas ----------------------------- */
+function bedById(id) { return cfg.beds.find(b => b.id === id); }
+function renderCanvas() {
+  const html = cfg.beds.map(b => {
+    const sens = SENSORS.filter(k => b.sensors.includes(k)).map(k =>
+      `<div class="mod sensor" id="m-${b.id}-${k}" data-sel="dev:${b.id}:${k}" data-kind="${k}"><span class="led" id="led-${b.id}-${k}"></span>${icon(k)}<span class="ml">${PART[k].short}</span><span class="val">--</span></div>`).join("");
+    const acts = ACTUATORS.filter(k => b.actuators.includes(k)).map(k =>
+      `<div class="mod actuator" id="m-${b.id}-${k}" data-sel="dev:${b.id}:${k}" data-kind="${k}"><span class="lamp"></span>${icon(k)}<span class="ml">${PART[k].short}</span><span class="st">OFF</span></div>`).join("");
+    return `<div class="board" id="board-${b.id}" data-bed="${b.id}">
+      <div class="bhead" data-sel="bed:${b.id}"><span class="bn">${b.id.replace("bed", "Bed ")}</span><span class="pn">${esc(b.name)}, ${esc(b.age)}</span><span class="badge" id="badge-${b.id}">–</span></div>
+      <div class="bbody">
+        <div class="zone">${sens}<div class="ph">Drop sensors here</div></div>
+        <div class="center" data-sel="bed:${b.id}">
+          <svg class="patient" viewBox="0 0 170 92" aria-hidden="true">
+            <rect class="mat" x="40" y="54" width="118" height="14" rx="4" stroke-width="1.5"/>
+            <path d="M22 80V40M22 62h146M160 80V58" stroke="#7D8A91" stroke-width="4" stroke-linecap="round" fill="none"/>
+            <g class="upper"><rect class="mat" x="22" y="42" width="30" height="14" rx="4" stroke-width="1.5"/><circle cx="36" cy="36" r="9" fill="#C9A88B"/></g>
+            <rect x="56" y="44" width="80" height="12" rx="6" fill="#8FB3C9"/>
+          </svg>
+          <div class="gw" id="gw-${b.id}" data-sel="node:gw:${b.id}"><b>IoT gateway</b>MQTT client</div>
+        </div>
+        <div class="zone">${acts}<div class="ph">Drop actuators here</div></div>
+      </div>
+      <div class="bfoot"><span id="pred-${b.id}">Scenario: <b>${SCEN_LABEL[b.scenario] || esc(String(b.scenario || "Not selected").replaceAll("_", " "))}</b>. ${esc(b.condition)}</span>
+        <button class="btn" data-collapse="${b.id}" ${srv.running ? "" : "hidden"}>Simulate collapse</button></div>
+    </div>`;
+  }).join("") + `<button class="addbed" id="addBed">+ Add bed</button>`;
+  $("boards").innerHTML = html;
+  markSelected();
+  applyLive(true);
+  requestAnimationFrame(drawWires);
+}
+
+/* wires: computed from where the boxes actually are */
+function wireList() {
+  const w = [["w-sys-web", "node-broker", "node-web", "sys", "h"], ["w-sys-engine", "node-broker", "node-engine", "sys", "h"], ["w-sys-db", "node-engine", "node-db", "sys", "h"]];
+  for (const b of cfg.beds) {
+    w.push([`w-${b.id}-up`, `gw-${b.id}`, "node-broker", "up", "v"]);
+    for (const k of b.sensors) w.push([`w-${b.id}-${k}`, `m-${b.id}-${k}`, `gw-${b.id}`, "sensor", "h"]);
+    for (const k of b.actuators) w.push([`w-${b.id}-${k}`, `gw-${b.id}`, `m-${b.id}-${k}`, "actuator", "h"]);
+  }
+  return w;
+}
+function drawWires() {
+  if (!cfg) return;
+  const canvas = $("canvas"), base = canvas.getBoundingClientRect();
+  for (const id of ["wiresBack", "wiresFront"]) { $(id).setAttribute("width", canvas.scrollWidth); $(id).setAttribute("height", canvas.scrollHeight); }
+  const box = id => { const el = $(id); if (!el) return null; const r = el.getBoundingClientRect(); return { l: r.left - base.left, r: r.right - base.left, t: r.top - base.top, b: r.bottom - base.top, cx: (r.left + r.right) / 2 - base.left, cy: (r.top + r.bottom) / 2 - base.top }; };
+  const paths = wireList().map(([id, a, b, cls, dir]) => {
+    const A = box(a), B = box(b); if (!A || !B) return null;
+    let d;
+    if (dir === "v") { const x1 = A.cx, y1 = A.t, x2 = B.cx, y2 = B.b; const k = Math.max(60, (y1 - y2) * 0.45); d = `M${x1},${y1} C${x1},${y1 - k} ${x2},${y2 + k} ${x2},${y2}`; }
+    else {
+      const leftToRight = A.cx < B.cx;
+      const x1 = leftToRight ? A.r : A.l, x2 = leftToRight ? B.l : B.r, y1 = A.cy, y2 = B.cy, k = Math.max(18, Math.abs(x2 - x1) * 0.5) * (leftToRight ? 1 : -1);
+      d = `M${x1},${y1} C${x1 + k},${y1} ${x2 - k},${y2} ${x2},${y2}`;
+    }
+    return [cls, `<path class="wire ${cls}" id="${id}" d="${d}"/>`];
+  });
+  $("wiresBack").innerHTML = paths.filter(p => p && (p[0] === "up" || p[0] === "sys")).map(p => p[1]).join("");
+  $("wiresFront").innerHTML = paths.filter(p => p && (p[0] === "sensor" || p[0] === "actuator")).map(p => p[1]).join("");
+}
+new ResizeObserver(() => requestAnimationFrame(drawWires)).observe($("canvas"));
+
+/* drag & drop onto beds */
+$("boards").addEventListener("dragover", e => {
+  const board = e.target.closest(".board"); if (!board || !dragKind) return;
+  e.preventDefault(); e.dataTransfer.dropEffect = "copy";
+  document.querySelectorAll(".board.over").forEach(b => b !== board && b.classList.remove("over"));
+  board.classList.add("over");
+});
+$("boards").addEventListener("dragleave", e => { const board = e.target.closest(".board"); if (board && !board.contains(e.relatedTarget)) board.classList.remove("over"); });
+$("boards").addEventListener("drop", e => {
+  const board = e.target.closest(".board"); if (!board) return;
+  e.preventDefault(); board.classList.remove("over");
+  const kind = e.dataTransfer.getData("text/plain") || dragKind, bed = bedById(board.dataset.bed);
+  if (!PART[kind] || !bed) return;
+  const list = SENSORS.includes(kind) ? bed.sensors : bed.actuators;
+  if (list.includes(kind)) { toast(`${bed.id} already has a ${PART[kind].name.toLowerCase()}.`); return; }
+  list.push(kind); save(); selected = `dev:${bed.id}:${kind}`; renderCanvas(); renderAttrs();
+});
+
+/* selection and buttons on the canvas */
+$("canvas").addEventListener("click", e => {
+  if (e.target.id === "addBed") return addBed();
+  const col = e.target.closest("[data-collapse]");
+  if (col) { api(`/api/inject/${col.dataset.collapse}`, {}).catch(err => toast(err.message)); return; }
+  const s = e.target.closest("[data-sel]");
+  selected = s ? s.dataset.sel : null;
+  markSelected(); renderAttrs();
+});
+function markSelected() {
+  document.querySelectorAll(".sel").forEach(el => el.classList.remove("sel"));
+  if (!selected) return;
+  const [type, a, b] = selected.split(":");
+  const el = type === "dev" ? $(`m-${a}-${b}`) : type === "bed" ? $(`board-${a}`) : a === "gw" ? $(`gw-${b}`) : $(`node-${a}`);
+  if (el) el.classList.add("sel");
+}
+function addBed() {
+  const n = Math.max(0, ...cfg.beds.map(b => parseInt(b.id.replace("bed", ""), 10) || 0)) + 1;
+  cfg.beds.push({ id: `bed${n}`, name: `Patient ${n}`, age: 60, condition: "General ward", scenario: "stable", sensors: [...SENSORS], actuators: [...ACTUATORS] });
+  selected = `bed:bed${n}`; save(); renderCanvas(); renderAttrs();
+}
+document.addEventListener("keydown", e => {
+  if ((e.key === "Delete" || e.key === "Backspace") && selected && selected.startsWith("dev:") && !srv.running && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) removeSelectedPart();
+});
+function removeSelectedPart() {
+  const [, bedId, kind] = selected.split(":"), b = bedById(bedId);
+  if (SENSORS.includes(kind)) { b.sensors = b.sensors.filter(k => k !== kind); if (b.sensor_settings) delete b.sensor_settings[kind]; }
+  else b.actuators = b.actuators.filter(k => k !== kind);
+  selected = null; save(); renderCanvas(); renderAttrs();
+}
+
+/* ----------------------------- attributes panel ----------------------------- */
+function renderAttrs() {
+  const A = $("attrs"), ro = srv.running ? "disabled" : "";
+  if (!cfg) return;
+  if (!selected) {
+    A.innerHTML = `<h2>Simulation</h2>
+      <label class="f">Duration (simulated seconds)<input type="number" id="aDur" min="120" max="3600" step="60" value="${cfg.duration_s}" ${ro}></label>
+      <label class="f">Random seed (same seed = same patients)<input type="number" id="aSeed" min="1" value="${cfg.seed}" ${ro}></label>
+      <h2>How to use</h2>
+      <p class="hint">1. Drag sensors and actuators onto beds.<br>2. Click a part to set its interval, noise and dropout.<br>3. Choose Reactive or Predictive and press Start.<br>4. During the run, click a sensor to unplug its probe, or press Simulate collapse on a bed.</p>
+      <p class="hint">The simple ward dashboard is at <a href="/dashboard" target="_blank" rel="noopener">/dashboard</a>.</p>`;
+    $("aDur").onchange = e => { cfg.duration_s = Math.max(120, Math.min(3600, Math.round(+e.target.value || 900))); e.target.value = cfg.duration_s; $("dur").textContent = fmt(cfg.duration_s); save(); };
+    $("aSeed").onchange = e => { cfg.seed = Math.max(1, Math.round(+e.target.value || 42)); e.target.value = cfg.seed; save(); };
+    return;
+  }
+  const [type, a, b] = selected.split(":");
+  if (type === "bed") {
+    const bed = bedById(a); if (!bed) { selected = null; return renderAttrs(); }
+    const st = live.status[a];
+    let liveHtml = "";
+    if (st && st.parts) {
+      liveHtml = `<h2>NEWS2 right now</h2><div class="big">${st.score}</div><div class="sub">${BAND_TEXT[st.band]}</div>
+        <table>${Object.entries(st.parts).map(([k, v]) => `<tr><td>${k === "oxygen" ? "On oxygen" : PART[k].short}</td><td class="n">${k === "oxygen" ? (st.on_oxygen ? "yes" : "no") : st.vitals[k]}</td><td class="n"><b>${v}</b> pt</td></tr>`).join("")}</table>`;
+    }
+    A.innerHTML = `<div class="title">${a.replace("bed", "Bed ")}</div><div class="sub">Virtual patient (block 1)</div>
+      <label class="f">Name<input type="text" id="aName" value="${esc(bed.name)}" ${ro}></label>
+      <label class="f">Age<input type="number" id="aAge" min="1" max="110" value="${bed.age}" ${ro}></label>
+      <label class="f">Condition<input type="text" id="aCond" value="${esc(bed.condition)}" ${ro}></label>
+      <label class="f">Scenario<select id="aScen" ${ro}>${scenarios.map(s => `<option value="${s}" ${s === bed.scenario ? "selected" : ""}>${SCEN_LABEL[s] || s}</option>`).join("")}</select></label>
+      ${srv.running ? `<button class="btn wide" data-collapse="${a}" id="aCollapse">Simulate collapse</button>` : `<button class="btn danger wide" id="aRemove" ${cfg.beds.length < 2 ? "disabled" : ""}>Remove bed</button>`}
+      ${liveHtml}`;
+    const upd = (k, v) => { bed[k] = v; save(); const h = document.querySelector(`#board-${a} .pn`); if (h) h.textContent = `${bed.name}, ${bed.age}`; };
+    if (!srv.running) {
+      $("aName").oninput = e => upd("name", e.target.value);
+      $("aAge").onchange = e => upd("age", Math.round(+e.target.value || 60));
+      $("aCond").oninput = e => upd("condition", e.target.value);
+      $("aScen").onchange = e => { bed.scenario = e.target.value; save(); renderCanvas(); };
+      $("aRemove").onclick = () => { cfg.beds = cfg.beds.filter(x => x.id !== a); selected = null; save(); renderCanvas(); renderAttrs(); };
+    } else $("aCollapse").onclick = () => api(`/api/inject/${a}`, {}).catch(err => toast(err.message));
+    return;
+  }
+  if (type === "dev") {
+    const bed = bedById(a), k = b, isSensor = SENSORS.includes(k), P = PART[k];
+    let html = `<div class="title">${P.name}</div><div class="sub">${a.replace("bed", "Bed ")}, ${isSensor ? "sensor (block 2)" : "actuator (block 6)"}</div><p class="hint">${P.what}</p>`;
+    if (isSensor) {
+      const def = cfg.sensor_defaults[k], ov = (bed.sensor_settings || {})[k] || {};
+      const v = live.values[`${a}/${k}`];
+      html += `<h2>Publishes to</h2><div class="topic">ward/${a}/vitals/${k}</div>`;
+      if (srv.running) {
+        const st = live.status[a];
+        html += `<h2>Last reading</h2><div class="big">${v === undefined ? "--" : esc(v)} <small style="font-size:14px">${P.unit}</small></div>
+          ${st && st.parts ? `<div class="sub">${st.parts[k]} NEWS2 point(s)</div>` : ""}
+          <label class="switch"><input type="checkbox" id="aProbe" ${live.probeOff[`${a}/${k}`] ? "" : "checked"}> Probe attached to patient</label>
+          <p class="hint">Untick to simulate a probe falling off. Readings stop, and after ${rules ? rules.stale_reading_s : 15} s the value is shown as stale.</p>`;
+      }
+      html += `<h2>Device values</h2>
+        <label class="f">Reading interval (s), default ${def.interval_s}<input type="number" data-f="interval_s" min="1" max="60" step="1" value="${ov.interval_s ?? def.interval_s}" ${ro}></label>
+        <label class="f">Noise (std dev), default ${def.noise}<input type="number" data-f="noise" min="0" max="20" step="0.1" value="${ov.noise ?? def.noise}" ${ro}></label>
+        <label class="f">Dropout chance (0–1), default ${def.dropout}<input type="number" data-f="dropout" min="0" max="0.9" step="0.01" value="${ov.dropout ?? def.dropout}" ${ro}></label>`;
+    } else {
+      const on = !!(live.acts[a] || {})[k];
+      html += `<h2>Listens on</h2><div class="topic">ward/${a}/cmd</div><div class="topic" style="margin-top:4px">{"actuator": "${k}", "on": true}</div>
+        <h2>State</h2><div class="big">${on ? "ON" : "OFF"}</div>`;
+    }
+    if (!srv.running) html += `<h2></h2><button class="btn danger wide" id="aDel">Remove part</button>`;
+    A.innerHTML = html;
+    if (!srv.running) {
+      $("aDel").onclick = removeSelectedPart;
+      A.querySelectorAll("input[data-f]").forEach(inp => inp.onchange = () => {
+        const f = inp.dataset.f, val = Math.max(+inp.min, Math.min(+inp.max, +inp.value || 0));
+        inp.value = f === "interval_s" ? Math.max(1, Math.round(val)) : val;
+        bed.sensor_settings = bed.sensor_settings || {};
+        bed.sensor_settings[k] = { ...(bed.sensor_settings[k] || {}), [f]: +inp.value };
+        save();
+      });
+    } else if ($("aProbe")) $("aProbe").onchange = e => {
+      live.probeOff[`${a}/${k}`] = !e.target.checked;
+      api(`/api/probe/${a}/${k}`, { connected: e.target.checked }).catch(err => toast(err.message));
+    };
+    return;
+  }
+  // nodes
+  const info = {
+    broker: `<div class="title">Mosquitto broker</div><div class="sub">MQTT message hub, localhost:1883</div>
+      <p class="hint">Every reading, command and status goes through here. Sensors publish, the engine and this page subscribe.</p>
+      <h2>Status</h2><p>${srv.broker ? "Connected" : "Not reachable. Start Mosquitto, then this page reconnects by itself."}</p>
+      <h2>Topics</h2><div class="topic">ward/&lt;bed&gt;/vitals/&lt;sensor&gt;<br>ward/&lt;bed&gt;/cmd<br>ward/&lt;bed&gt;/actuators<br>ward/&lt;bed&gt;/status<br>ward/&lt;bed&gt;/event<br>ward/clock<br>ward/control</div>`,
+    engine: `<div class="title">Central engine</div><div class="sub">Blocks 3, 4, 5a and 5b (simulator/engine.py)</div>
+      <p class="hint">Once per simulated second it scores every bed with NEWS2, checks the rules and, in predictive mode, looks ahead.</p>
+      ${rules ? `<table><tr><td>Danger zone</td><td class="n">NEWS2 ≥ ${rules.emergency_threshold}</td></tr><tr><td>Look-ahead warning</td><td class="n">NEWS2 ≥ ${rules.predict_danger_score}</td></tr>
+      <tr><td>History used</td><td class="n">${rules.predict_history_s} s</td></tr><tr><td>Looks ahead</td><td class="n">${rules.predict_horizon_s} s</td></tr>
+      <tr><td>Re-checks every</td><td class="n">${rules.predict_every_s} s</td></tr></table><p class="hint">Edit these in config/rules.json.</p>` : ""}`,
+    db: `<div class="title">SQLite</div><div class="sub">sim.db (simulator/database.py)</div><p class="hint">Stores every reading, score, decision and action. The Results tab below reads the last reactive and predictive runs from it.</p>`,
+    web: `<div class="title">FastAPI server</div><div class="sub">server.py</div><p class="hint">Subscribes to ward/# and pushes each message to this page over a WebSocket. Also starts and stops the simulation processes.</p>`,
+    gw: `<div class="title">IoT gateway</div><div class="sub">${(b || "").replace("bed", "Bed ")}</div><p class="hint">Represents the bedside MQTT client in simulator/ward.py. It publishes this bed's readings and receives its actuator commands.</p>`,
+  };
+  A.innerHTML = info[a] || "";
+}
+
+/* ----------------------------- live updates ----------------------------- */
+function predictionText(s) {
+  if (s.state === "emergency") return "<b>Emergency response</b> in progress.";
+  if (s.state === "early") return "<b>Early intervention</b> in progress.";
+  const p = s.prediction;
+  if (!p) return "Collecting a minute of readings before looking ahead.";
+  if (!p.heading_for_danger) return `Look-ahead: stable, max <b>${p.predicted_max_score}</b> expected.`;
+  return `Heading for <b>${p.predicted_max_score}</b> in ~<b>${fmt(p.danger_in_s)}</b>. ${s.mode === "predictive" ? `Chose <b>${p.choice.replace("_", " ")}</b>.` : "Reactive: no early action."}`;
+}
+let liveDirty = new Set();
+function applyLive(all) {
+  const beds = all ? cfg.beds.map(b => b.id) : [...liveDirty];
+  liveDirty.clear();
+  for (const id of beds) {
+    const board = $(`board-${id}`); if (!board) continue;
+    const st = live.status[id], acts = live.acts[id] || {};
+    const bed = bedById(id);
+    for (const k of bed.sensors) {
+      const m = $(`m-${id}-${k}`); if (!m) continue;
+      const v = live.values[`${id}/${k}`];
+      const stale = st && st.stale && st.stale.includes(k);
+      m.querySelector(".val").textContent = v === undefined || stale ? "--" : v;
+      m.classList.toggle("off", !!live.probeOff[`${id}/${k}`] || !!stale);
+    }
+    for (const k of bed.actuators) {
+      const m = $(`m-${id}-${k}`); if (!m) continue;
+      m.classList.toggle("on", !!acts[k]); m.querySelector(".st").textContent = acts[k] ? "ON" : "OFF";
+    }
+    board.classList.toggle("raised", !!acts.bed_motor);
+    if (st && st.score !== undefined) {
+      board.className = board.className.replace(/\b(band|state)-\S+/g, "").trim() + ` band-${st.band} state-${st.state}`;
+      $(`badge-${id}`).textContent = st.score;
+      $(`pred-${id}`).innerHTML = predictionText(st);
+    }
+  }
+  // refresh the live numbers in the side panel, but never while the mouse is over it (so clicks are not lost)
+  const A = $("attrs");
+  if (selected && (selected.startsWith("bed:") || selected.startsWith("dev:")) && srv.running && !A.matches(":hover") && !A.contains(document.activeElement)
+      && performance.now() - (applyLive.lastAttrs || 0) > 500) { applyLive.lastAttrs = performance.now(); renderAttrs(); }
+}
+function hit(id) { hits[id] = performance.now(); }
+function onMqtt(topic, d) {
+  const p = topic.split("/"), now = performance.now();
+  msgTimes.push(now);
+  hit("w-sys-web");
+  if (p[0] === "ward" && p.length >= 3) {
+    const bed = p[1];
+    if (p[2] === "vitals") { live.values[`${bed}/${p[3]}`] = d.value; hit(`w-${bed}-${p[3]}`); hit(`led-${bed}-${p[3]}`); hit(`w-${bed}-up`); hit("w-sys-engine"); liveDirty.add(bed); }
+    else if (p[2] === "cmd") { hit("w-sys-engine"); hit(`w-${bed}-up`); hit(`w-${bed}-${d.actuator}`); }
+    else if (p[2] === "actuators") { live.acts[bed] = d; hit(`w-${bed}-up`); liveDirty.add(bed); }
+    else if (p[2] === "status") { live.status[bed] = d; hit("w-sys-engine"); liveDirty.add(bed); }
+    else if (p[2] === "event") addEvent(bed, d);
+    else if (p[2] === "sensor_cfg" || p[2] === "inject") hit(`w-${bed}-up`);
+  }
+  if (topic === "ward/clock") { live.t = d.t; $("clock").textContent = fmt(d.t); hit("w-sys-db"); }
+  if (topic === "ward/control" && d.state === "started") resetLive();
+  if (topic === "ward/control" && d.state === "finished") addEvent(null, { t: d.t, kind: "info", text: "Run finished and saved to sim.db. See the Results tab." });
+  mqLines.push([live.t, topic, d]);
+  if (mqLines.length > 1500) mqLines.splice(0, 500);
+  mqDirty = true;
+}
+function resetLive() {
+  Object.assign(live, { values: {}, acts: {}, status: {}, probeOff: {}, t: 0 });
+  $("ev").innerHTML = ""; evCount = 0;
+  cfg.beds.forEach(b => { const bd = $(`board-${b.id}`); if (bd) { bd.className = "board"; $(`badge-${b.id}`).textContent = "–"; } });
+  applyLive(true);
+}
+let evCount = 0;
+function addEvent(bed, e) {
+  const ol = $("ev"); if (!evCount) ol.innerHTML = ""; evCount++;
+  const li = document.createElement("li"); li.className = e.kind;
+  li.innerHTML = `<time>${fmt(e.t)}</time>${bed ? `<b>${bed.replace("bed", "Bed ")}</b> ` : ""}${esc(e.text)}`;
+  ol.prepend(li); while (ol.children.length > 300) ol.lastChild.remove();
+}
+function renderMq() {
+  mqDirty = false;
+  const f = $("mqFilter").value.trim().toLowerCase(), hide = $("mqHideStatus").checked, out = [];
+  for (let i = mqLines.length - 1; i >= 0 && out.length < 250; i--) {
+    const [t, tp, d] = mqLines[i];
+    if (hide && tp.endsWith("/status")) continue;
+    if (f && !tp.toLowerCase().includes(f)) continue;
+    out.push(`<li><time>${fmt(t)}</time><span class="tp${tp.endsWith("/cmd") ? " cmd" : ""}">${esc(tp)}</span>${esc(JSON.stringify(d))}</li>`);
+  }
+  const pane = $("mqPane");
+  $("mq").innerHTML = out.reverse().join("") || '<li class="empty">No matching messages.</li>';
+  if ($("mqAuto").checked) pane.scrollTop = pane.scrollHeight;
+}
+$("mqFilter").oninput = renderMq; $("mqHideStatus").onchange = renderMq;
+$("mqClear").onclick = () => { mqLines = []; renderMq(); };
+
+/* animation loop: wires glow while messages flow */
+setInterval(() => {
+  const now = performance.now();
+  document.querySelectorAll(".wires .wire").forEach(w => w.classList.toggle("hot", now - (hits[w.id] || 0) < 350));
+  document.querySelectorAll(".mod .led").forEach(l => l.classList.toggle("hot", now - (hits[l.id] || 0) < 200));
+  if (liveDirty.size) applyLive(false);
+  if (mqDirty && document.querySelector("#mqPane.active")) renderMq();
+  msgTimes = msgTimes.filter(t => now - t < 1000);
+  $("rate").textContent = `${msgTimes.length} msg/s`;
+}, 100);
+
+/* ----------------------------- run controls ----------------------------- */
+function applyServerState() {
+  const b = $("broker");
+  b.classList.toggle("ok", srv.broker);
+  b.querySelector("span").textContent = srv.broker ? "Mosquitto connected" : "Mosquitto not reachable";
+  const busy = srv.running || srv.stopping || !!srv.comparing;
+  $("startBtn").disabled = busy || !srv.broker;
+  $("stopBtn").disabled = !srv.running;
+  $("speed").disabled = busy;
+  document.querySelectorAll(".seg button").forEach(x => (x.disabled = busy));
+  document.body.classList.toggle("locked", busy);
+  document.querySelectorAll("[data-collapse]").forEach(x => { if (x.closest(".bfoot")) x.hidden = !srv.running; });
+  $("cmpBtn").disabled = busy || !srv.broker;
+  $("cmpMsg").textContent = srv.comparing ? `Running ${srv.comparing} mode at 200×…` : "";
+  renderAttrs();
+}
+document.querySelectorAll(".seg button").forEach(btn => btn.onclick = () => {
+  cfg.mode = btn.dataset.mode;
+  document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", String(x === btn)));
+  save();
+});
+$("speed").onchange = e => { cfg.speed = +e.target.value; save(); };
+$("startBtn").onclick = async () => {
+  try {
+    clearTimeout(saveTimer); await api("/api/config", cfg);
+    resetLive(); mqLines = [];
+    $("dur").textContent = fmt(cfg.duration_s);
+    await api("/api/start", { mode: cfg.mode });
+  } catch (e) { toast(e.message); }
+};
+$("stopBtn").onclick = async () => { try { const d = await api("/api/stop", {}); toast(d.saved ? "Simulation stopped. All readings and events up to this point have been saved." : "Simulation stopped."); } catch (e) { toast(e.message); } };
+
+/* ----------------------------- results ----------------------------- */
+function renderResults(r) {
+  if (!r.reactive && !r.predictive) { $("resTable").innerHTML = '<p class="empty">No runs in sim.db yet.</p>'; return; }
+  const R = r.reactive ? r.reactive.rows : [], P = r.predictive ? r.predictive.rows : [];
+  const beds = [...new Set([...R, ...P].map(x => x.bed))].sort();
+  const get = (rows, bed) => rows.find(x => x.bed === bed) || {};
+  const f = v => (v === null || v === undefined ? "–" : v);
+  const tm = v => (v === null || v === undefined ? "–" : fmt(v));
+  const sum = (rows, k) => rows.reduce((a, x) => a + (x[k] || 0), 0);
+  $("resTable").innerHTML = `<table><thead>
+    <tr><th>Bed</th><th>Peak (reactive)</th><th>Peak (predictive)</th><th>s ≥ 7 (reactive)</th><th>s ≥ 7 (predictive)</th><th>s at 5–6 (reactive)</th><th>s at 5–6 (predictive)</th><th>Emergency at (R)</th><th>Early help at (P)</th><th>Emergency at (P)</th></tr></thead><tbody>
+    ${beds.map(b => { const x = get(R, b), y = get(P, b), nm = bedById(b); return `<tr><td>${b.replace("bed", "Bed ")}${nm ? ` – ${esc(nm.name)}` : ""}</td><td>${f(x.peak)}</td><td>${f(y.peak)}</td><td>${f(x.red)}</td><td>${f(y.red)}</td><td>${f(x.orange)}</td><td>${f(y.orange)}</td><td>${tm(x.emergency_at)}</td><td>${tm(y.early)}</td><td>${tm(y.emergency_at)}</td></tr>`; }).join("")}
+    <tr><td><b>Total</b></td><td></td><td></td><td><b>${sum(R, "red")}</b></td><td><b>${sum(P, "red")}</b></td><td><b>${sum(R, "orange")}</b></td><td><b>${sum(P, "orange")}</b></td><td></td><td></td><td></td></tr>
+    </tbody></table><p class="hint">Run ${r.reactive ? r.reactive.run_id : "–"} (reactive) and run ${r.predictive ? r.predictive.run_id : "–"} (predictive) from sim.db. Same results as <code>python compare_runs.py</code>.</p>`;
+}
+$("cmpBtn").onclick = async () => { try { clearTimeout(saveTimer); await api("/api/config", cfg); await api("/api/compare", {}); } catch (e) { toast(e.message); } };
+$("resLoad").onclick = async () => renderResults(await api("/api/results"));
+document.querySelectorAll(".dtabs .t").forEach(t => t.onclick = () => {
+  document.querySelectorAll(".dtabs .t").forEach(x => x.setAttribute("aria-selected", String(x === t)));
+  document.querySelectorAll(".pane").forEach(p => p.classList.toggle("active", p.id === t.dataset.pane));
+  $("mqTools").style.visibility = t.dataset.pane === "mqPane" ? "visible" : "hidden";
+  if (t.dataset.pane === "mqPane") renderMq();
+});
+
+/* ----------------------------- WebSocket ----------------------------- */
+function connect() {
+  const ws = new WebSocket(`ws://${location.host}/ws/studio`);
+  ws.onmessage = e => {
+    const m = JSON.parse(e.data);
+    if (m.type === "hello") {
+      srv = m.state;
+      const s = m.snapshot;
+      Object.assign(live.status, s.status); Object.assign(live.acts, s.actuators);
+      s.events.forEach(ev => addEvent(ev.bed, ev));
+      applyServerState(); applyLive(true);
+    } else if (m.type === "server") {
+      const wasRunning = srv.running; srv = m; applyServerState();
+      if (wasRunning !== srv.running) renderCanvas();
+    } else if (m.type === "mqtt") onMqtt(m.topic, m.data);
+    else if (m.type === "results") { if (m.error) toast("Comparison error: " + m.error); renderResults(m); document.querySelector('.dtabs .t[data-pane="resPane"]').click(); }
+  };
+  ws.onclose = () => { srv.broker = false; $("broker").querySelector("span").textContent = "Server not running. Start python server.py"; $("broker").classList.remove("ok"); setTimeout(connect, 2000); };
+}
+
+(async function init() {
+  renderPalette();
+  try {
+    cfg = await api("/api/config");
+    const sc = await api("/api/scenarios"); scenarios = sc.scenarios; rules = sc.rules;
+  } catch (e) { toast("Cannot reach the server. Start it with: python server.py"); return; }
+  document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.mode === cfg.mode)));
+  $("speed").value = String([1, 5, 10, 20].includes(cfg.speed) ? cfg.speed : 5);
+  $("dur").textContent = fmt(cfg.duration_s);
+  renderCanvas(); renderAttrs(); connect();
+})();
+</script>
+</body>
+</html>

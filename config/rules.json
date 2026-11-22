@@ -1,0 +1,27 @@
+{
+  "_comment": "Thresholds for the rule engine (5a) and the look-ahead (5b). Edit these instead of the code.",
+  "emergency_threshold": 7,
+  "urgent_threshold": 5,
+  "manual_timeout_s": 180,
+  "manual_recover_s": 60,
+  "predict_danger_score": 5,
+  "predict_every_s": 10,
+  "predict_history_s": 60,
+  "predict_horizon_s": 300,
+  "wait_option_s": 60,
+  "help_now_within_s": 60,
+  "no_action_beyond_s": 180,
+  "all_clear_score": 2,
+  "all_clear_hold_s": 30,
+  "stale_reading_s": 15,
+  "_costs": "Option cost = minutes in warning zone x warning + minutes in danger zone x danger + action cost",
+  "cost_per_min": {
+    "warning": 1.0,
+    "danger": 5.0
+  },
+  "action_cost": {
+    "do_nothing": 0,
+    "wait": 0.2,
+    "help_now": 0.6
+  }
+}

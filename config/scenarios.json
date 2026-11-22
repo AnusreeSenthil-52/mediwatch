@@ -1,0 +1,14 @@
+{
+  "_comment": "How each kind of virtual patient behaves. severity runs from 0 (healthy) to 1 (critically ill). drift is how fast severity rises per simulated second.",
+  "scenarios": {
+    "stable":              {"start_severity": 0.10, "drift_per_s": 0.0,    "noise": 0.0004},
+    "slow_deterioration":  {"start_severity": 0.12, "drift_per_s": 0.0010, "noise": 0.0004},
+    "sudden_collapse":     {"start_severity": 0.10, "drift_per_s": 0.0,    "noise": 0.0004,
+                            "collapse_at_s": 240, "collapse_drift": 0.010}
+  },
+  "care": {
+    "_comment": "Seconds before help arrives, and how fast severity falls once the patient is treated.",
+    "nurse_delay_s": 30,      "nurse_recovery_per_s": 0.002,
+    "emergency_delay_s": 60,  "emergency_recovery_per_s": 0.004
+  }
+}

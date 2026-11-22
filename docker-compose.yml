@@ -1,0 +1,30 @@
+services:
+  mqtt:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    volumes:
+      - ./deploy/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+    # Deliberately no host port mapping: the broker is for the app container only.
+
+  web:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      - mqtt
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8000
+      MEDIWATCH_MQTT_HOST: mqtt
+      MEDIWATCH_MQTT_PORT: 1883
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8000}:8000"
+    volumes:
+      - ./config/ward_config.json:/app/config/ward_config.json
+      - mediwatch_db:/app/sim.db
+
+volumes:
+  mosquitto_data:
+  mosquitto_log:
+  mediwatch_db:
