@@ -24,6 +24,7 @@ from contextlib import asynccontextmanager
 import paho.mqtt.client as mqtt
 import uvicorn
 from fastapi import Body, FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
 import compare_runs
@@ -181,6 +182,14 @@ async def lifespan(app):
 
 
 app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/")
