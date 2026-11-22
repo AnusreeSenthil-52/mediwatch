@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ward monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #E6ECEE; --paper: #FAFBFB; --ink: #18262E; --muted: #5E6E77; --line: #CBD5DA;
+    --green: #4E9A55; --yellow: #E2BC2E; --orange: #E27B2E; --red: #CC3333;
+    --font: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 var(--font); }
+  header { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: baseline;
+           padding: 18px 24px 10px; }
+  h1 { font-size: 22px; margin: 0; }
+  .meta { color: var(--muted); }
+  .meta b { color: var(--ink); }
+  #conn.off { color: var(--red); }
+  main { display: grid; grid-template-columns: 1fr 340px; gap: 20px; padding: 8px 24px 32px; }
+  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
+
+  #beds { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; align-content: start; }
+  .bed { background: var(--paper); border: 1px solid var(--line); border-radius: 6px;
+         display: grid; grid-template-columns: 96px 1fr; overflow: hidden; }
+  .scorecol { display: flex; flex-direction: column; align-items: center; justify-content: center;
+              padding: 14px 6px; color: #fff; background: var(--green); transition: background .4s; }
+  .scorecol .num { font-size: 56px; font-weight: 700; line-height: 1; }
+  .scorecol .band { font-size: 13px; margin-top: 6px; text-align: center; }
+  .band-low .scorecol { background: var(--green); }
+  .band-low-medium .scorecol { background: var(--yellow); color: var(--ink); }
+  .band-medium .scorecol { background: var(--orange); }
+  .band-high .scorecol { background: var(--red); }
+  .state-emergency { box-shadow: 0 0 0 3px var(--red); }
+  .state-early { box-shadow: 0 0 0 3px var(--orange); }
+
+  .body { padding: 12px 14px; min-width: 0; }
+  .who { display: flex; justify-content: space-between; gap: 8px; }
+  .who strong { font-size: 17px; }
+  .who span { color: var(--muted); font-size: 13px; text-align: right; }
+  .vitals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 10px; margin: 10px 0; }
+  .vital small { display: block; color: var(--muted); font-size: 12px; }
+  .vital b { font-size: 19px; }
+  .vital.pts1 b { color: #8a6d00; } .vital.pts2 b { color: #b4520b; } .vital.pts3 b { color: var(--red); }
+  .vital.stale b { color: var(--muted); text-decoration: line-through; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font-size: 12px; padding: 2px 8px; border-radius: 10px; border: 1px solid var(--line); color: var(--muted); }
+  .chip.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .predict { margin-top: 10px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 8px; }
+  .predict b { color: var(--ink); }
+  svg.spark { width: 100%; height: 44px; display: block; margin-top: 8px; }
+
+  aside { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 14px;
+          max-height: calc(100vh - 100px); overflow: auto; position: sticky; top: 12px; }
+  aside h2 { font-size: 16px; margin: 0 0 8px; }
+  ol { list-style: none; margin: 0; padding: 0; }
+  li { padding: 7px 0 7px 10px; border-left: 3px solid var(--line); margin-bottom: 4px; font-size: 13px; }
+  li time { color: var(--muted); margin-right: 6px; font-variant-numeric: tabular-nums; }
+  li.emergency { border-color: var(--red); } li.early, li.prediction { border-color: var(--orange); }
+  li.recovered, li.arrival { border-color: var(--green); }
+  .empty { color: var(--muted); }
+  @media (prefers-reduced-motion: reduce) { .scorecol { transition: none; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Ward monitor</h1>
+  <span class="meta">Mode <b id="mode">-</b></span>
+  <span class="meta">Simulated time <b id="clock">0:00</b></span>
+  <span class="meta" id="conn">Connecting...</span>
+</header>
+<main>
+  <section id="beds"><p class="empty">Waiting for the simulator. Start it from the setup window or run_all.py.</p></section>
+  <aside><h2>Event timeline</h2><ol id="events"><li class="empty">No events yet.</li></ol></aside>
+</main>
+
+<script>
+const LABELS = { hr: "Heart rate", spo2: "SpO\u2082 %", rr: "Breaths/min", sbp: "Systolic BP", temp: "Temp \u00b0C", consciousness: "ACVPU" };
+const BAND_TEXT = { "low": "Low", "low-medium": "Low-medium", "medium": "Medium", "high": "High" };
+const ACT_TEXT = { alarm: "Alarm", nurse_call: "Nurse call", oxygen: "Oxygen", bed_motor: "Bed raised" };
+const state = { status: {}, actuators: {}, events: [], history: {} };
+
+const fmtTime = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+
+function sparkline(points) {
+  if (points.length < 2) return "";
+  const w = 300, h = 44, max = 14;
+  const t0 = points[0][0], span = Math.max(1, points[points.length - 1][0] - t0);
+  const xy = points.map(([t, s]) => `${((t - t0) / span * w).toFixed(1)},${(h - Math.min(s, max) / max * h).toFixed(1)}`).join(" ");
+  const y7 = h - 7 / max * h, y5 = h - 5 / max * h;
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-label="Score over the last two minutes">
+    <line x1="0" x2="${w}" y1="${y7}" y2="${y7}" stroke="#CC3333" stroke-dasharray="3 3" stroke-width="1"/>
+    <line x1="0" x2="${w}" y1="${y5}" y2="${y5}" stroke="#E27B2E" stroke-dasharray="3 3" stroke-width="1"/>
+    <polyline points="${xy}" fill="none" stroke="#18262E" stroke-width="1.6"/></svg>`;
+}
+
+function predictionText(s) {
+  if (s.state === "emergency") return "Emergency response in progress.";
+  if (s.state === "early") return "Early intervention in progress. Waiting for readings to settle.";
+  const p = s.prediction;
+  if (!p) return "Collecting a minute of readings before looking ahead.";
+  if (!p.heading_for_danger) return `Look-ahead: stable. Highest score expected in 5 min <b>${p.predicted_max_score}</b>.`;
+  const act = s.mode === "predictive" ? `Chosen: <b>${p.choice.replace("_", " ")}</b>` : "Reactive mode: no early action";
+  return `Heading for <b>${p.predicted_max_score}</b> in about <b>${fmtTime(p.danger_in_s)}</b>. ${act}.`;
+}
+
+function renderBeds() {
+  const ids = Object.keys(state.status).sort();
+  const root = document.getElementById("beds");
+  if (!ids.length) return;
+  root.innerHTML = ids.map(id => {
+    const s = state.status[id];
+    if (!s.vitals) return `<article class="bed"><div class="scorecol"><span class="num">-</span></div>
+      <div class="body"><strong>${id}</strong><p class="empty">Waiting for: ${(s.waiting_for || []).join(", ")}</p></div></article>`;
+    const acts = state.actuators[id] || {};
+    const vitals = Object.keys(LABELS).map(k => {
+      const pts = s.parts[k] || 0, stale = (s.stale || []).includes(k);
+      const val = k === "sbp" ? `${s.vitals[k]}` : s.vitals[k];
+      return `<div class="vital pts${pts}${stale ? " stale" : ""}"><small>${LABELS[k]}</small><b>${val}</b></div>`;
+    }).join("");
+    const chips = Object.keys(acts).map(a => `<span class="chip${acts[a] ? " on" : ""}">${ACT_TEXT[a] || a}</span>`).join("");
+    return `<article class="bed band-${s.band} state-${s.state}">
+      <div class="scorecol"><span class="num">${s.score}</span><span class="band">${BAND_TEXT[s.band]} risk${s.on_oxygen ? "<br>on O\u2082" : ""}</span></div>
+      <div class="body">
+        <div class="who"><strong>${id.replace("bed", "Bed ")} \u2013 ${s.name}</strong><span>${s.age} y<br>${s.condition}</span></div>
+        <div class="vitals">${vitals}</div>
+        <div class="chips">${chips}</div>
+        ${sparkline(state.history[id] || [])}
+        <div class="predict">${predictionText(s)}</div>
+      </div></article>`;
+  }).join("");
+}
+
+function renderEvents() {
+  const ol = document.getElementById("events");
+  if (!state.events.length) return;
+  ol.innerHTML = state.events.slice().reverse().map(e =>
+    `<li class="${e.kind}"><time>${fmtTime(e.t)}</time><b>${(e.bed || "").replace("bed", "Bed ")}</b> ${e.text}</li>`).join("");
+}
+
+function handle(msg) {
+  if (msg.type === "snapshot") {
+    Object.assign(state, msg.data, { history: {} });
+  } else if (msg.type === "status") {
+    state.status[msg.bed] = msg.data;
+    if (msg.data.score !== undefined) {
+      const h = (state.history[msg.bed] ||= []);
+      h.push([msg.data.t, msg.data.score]);
+      while (h.length && h[0][0] < msg.data.t - 120) h.shift();
+    }
+    document.getElementById("clock").textContent = fmtTime(msg.data.t);
+    document.getElementById("mode").textContent = msg.data.mode || "-";
+  } else if (msg.type === "actuators") {
+    state.actuators[msg.bed] = msg.data;
+  } else if (msg.type === "event") {
+    state.events.push(Object.assign({ bed: msg.bed }, msg.data));
+    renderEvents();
+  } else if (msg.type === "control" && msg.data.state === "started") {
+    Object.assign(state, { status: {}, actuators: {}, events: [], history: {} });
+    document.getElementById("events").innerHTML = '<li class="empty">No events yet.</li>';
+  }
+  scheduleRender();
+}
+
+let pending = false;
+function scheduleRender() {
+  if (pending) return;
+  pending = true;
+  requestAnimationFrame(() => { pending = false; renderBeds(); renderEvents(); });
+}
+
+function connect() {
+  const conn = document.getElementById("conn");
+  const ws = new WebSocket(`ws://${location.host}/ws`);
+  ws.onopen = () => { conn.textContent = "Live"; conn.className = "meta"; };
+  ws.onmessage = e => handle(JSON.parse(e.data));
+  ws.onclose = () => { conn.textContent = "Disconnected - retrying"; conn.className = "meta off"; setTimeout(connect, 2000); };
+}
+connect();
+</script>
+</body>
+</html>
