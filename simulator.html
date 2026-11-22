@@ -1,185 +1,100 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ward monitor</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MediWatch | Ward Builder</title>
 <style>
-  :root {
-    --bg: #E6ECEE; --paper: #FAFBFB; --ink: #18262E; --muted: #5E6E77; --line: #CBD5DA;
-    --green: #4E9A55; --yellow: #E2BC2E; --orange: #E27B2E; --red: #CC3333;
-    --font: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 var(--font); }
-  header { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: baseline;
-           padding: 18px 24px 10px; }
-  h1 { font-size: 22px; margin: 0; }
-  .meta { color: var(--muted); }
-  .meta b { color: var(--ink); }
-  #conn.off { color: var(--red); }
-  main { display: grid; grid-template-columns: 1fr 340px; gap: 20px; padding: 8px 24px 32px; }
-  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
-
-  #beds { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; align-content: start; }
-  .bed { background: var(--paper); border: 1px solid var(--line); border-radius: 6px;
-         display: grid; grid-template-columns: 96px 1fr; overflow: hidden; }
-  .scorecol { display: flex; flex-direction: column; align-items: center; justify-content: center;
-              padding: 14px 6px; color: #fff; background: var(--green); transition: background .4s; }
-  .scorecol .num { font-size: 56px; font-weight: 700; line-height: 1; }
-  .scorecol .band { font-size: 13px; margin-top: 6px; text-align: center; }
-  .band-low .scorecol { background: var(--green); }
-  .band-low-medium .scorecol { background: var(--yellow); color: var(--ink); }
-  .band-medium .scorecol { background: var(--orange); }
-  .band-high .scorecol { background: var(--red); }
-  .state-emergency { box-shadow: 0 0 0 3px var(--red); }
-  .state-early { box-shadow: 0 0 0 3px var(--orange); }
-
-  .body { padding: 12px 14px; min-width: 0; }
-  .who { display: flex; justify-content: space-between; gap: 8px; }
-  .who strong { font-size: 17px; }
-  .who span { color: var(--muted); font-size: 13px; text-align: right; }
-  .vitals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 10px; margin: 10px 0; }
-  .vital small { display: block; color: var(--muted); font-size: 12px; }
-  .vital b { font-size: 19px; }
-  .vital.pts1 b { color: #8a6d00; } .vital.pts2 b { color: #b4520b; } .vital.pts3 b { color: var(--red); }
-  .vital.stale b { color: var(--muted); text-decoration: line-through; }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .chip { font-size: 12px; padding: 2px 8px; border-radius: 10px; border: 1px solid var(--line); color: var(--muted); }
-  .chip.on { background: var(--ink); color: #fff; border-color: var(--ink); }
-  .predict { margin-top: 10px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 8px; }
-  .predict b { color: var(--ink); }
-  svg.spark { width: 100%; height: 44px; display: block; margin-top: 8px; }
-
-  aside { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 14px;
-          max-height: calc(100vh - 100px); overflow: auto; position: sticky; top: 12px; }
-  aside h2 { font-size: 16px; margin: 0 0 8px; }
-  ol { list-style: none; margin: 0; padding: 0; }
-  li { padding: 7px 0 7px 10px; border-left: 3px solid var(--line); margin-bottom: 4px; font-size: 13px; }
-  li time { color: var(--muted); margin-right: 6px; font-variant-numeric: tabular-nums; }
-  li.emergency { border-color: var(--red); } li.early, li.prediction { border-color: var(--orange); }
-  li.recovered, li.arrival { border-color: var(--green); }
-  .empty { color: var(--muted); }
-  @media (prefers-reduced-motion: reduce) { .scorecol { transition: none; } }
-</style>
-</head>
-<body>
-<header>
-  <h1>Ward monitor</h1>
-  <span class="meta">Mode <b id="mode">-</b></span>
-  <span class="meta">Simulated time <b id="clock">0:00</b></span>
-  <span class="meta" id="conn">Connecting...</span>
-</header>
-<main>
-  <section id="beds"><p class="empty">Waiting for the simulator. Start it from the setup window or run_all.py.</p></section>
-  <aside><h2>Event timeline</h2><ol id="events"><li class="empty">No events yet.</li></ol></aside>
-</main>
-
+:root{--bg:#07131f;--panel:#102335;--panel2:#152d41;--line:#203d52;--ink:#e6f0f7;--muted:#8ba2b5;--teal:#25c8b4;--green:#36c99a;--amber:#f2b454;--red:#ff6b78;--blue:#75b8ff;--mono:ui-monospace,SFMono-Regular,Consolas,monospace}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 Inter,Segoe UI,Arial,sans-serif}button,input,select{font:inherit;color:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+header{height:62px;background:#0b1b2a;border-bottom:1px solid #1c3548;display:flex;align-items:center;gap:22px;padding:0 20px;position:sticky;top:0;z-index:3}.brand{font-size:19px;font-weight:850;letter-spacing:.3px;white-space:nowrap}.brand span{color:var(--teal)}.saved{margin-left:auto;color:var(--muted);font:12px var(--mono);background:#102335;border:1px solid var(--line);border-radius:20px;padding:8px 12px}.tabs{display:flex;gap:4px;height:100%;align-items:stretch}.tabs button{border:0;border-bottom:2px solid transparent;background:transparent;color:var(--muted);padding:0 14px}.tabs button.active{color:var(--teal);border-bottom-color:var(--teal);font-weight:700}.btn{border:1px solid var(--line);background:#142b3e;padding:9px 13px;border-radius:8px;font-weight:700}.btn:hover{filter:brightness(1.12)}.btn.teal{background:var(--teal);color:#06221f;border-color:var(--teal)}.btn.warn{color:#ffd2d5;border-color:#653746;background:#2a1c2b}.layout{display:grid;grid-template-columns:220px minmax(400px,1fr) 330px;gap:14px;padding:14px 16px 8px;max-width:1800px;margin:auto}.panel{background:var(--panel);border:1px solid var(--line);border-radius:11px;min-width:0}.side{padding:13px;align-self:start}.section-label{color:#7c9aaf;font-size:11px;letter-spacing:1.6px;font-weight:800;margin:3px 0 9px}.section-label:not(:first-child){margin-top:18px}.component{width:100%;display:flex;align-items:center;gap:10px;background:#132a3c;border:1px solid #203c50;border-radius:7px;padding:9px 9px;margin:5px 0;text-align:left;color:#b5c9d7}.component:hover{border-color:#278f89;color:#e9fffb}.glyph{width:22px;height:22px;border-radius:5px;display:inline-grid;place-items:center;background:#1eaa91;color:#061e20;font-size:10px;font-weight:900;flex-shrink:0}.component .plus{margin-left:auto;color:#7190a5;font-size:17px}.hint{font-size:11px;color:#7892a5;line-height:1.5;margin:12px 2px 3px}.center{padding:14px;min-height:calc(100vh - 95px)}.center-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}.center-head h2{font-size:13px;letter-spacing:1.4px;color:#91aabd;margin:0}.bed-list{display:grid;gap:8px}.bed{border:1px solid #244257;background:#132a3c;border-radius:9px;padding:11px 12px;cursor:pointer;transition:border .15s,background .15s}.bed:hover{border-color:#398e98}.bed.selected{border-color:var(--teal);background:#153346;box-shadow:inset 3px 0 var(--teal)}.bed.risk-high{border:2px solid var(--red)!important;background:#321d2a!important;box-shadow:inset 4px 0 var(--red),0 0 0 1px #ff6b7833}.bed.risk-review{border:2px solid var(--amber)!important;background:#30291f!important;box-shadow:inset 4px 0 var(--amber)}.vital-mini{font:11px var(--mono);color:#b7cbd9;margin-top:8px}.tab-content{padding:12px 0}.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px;margin:12px 0}.metric{background:#0c1d2b;border:1px solid var(--line);border-radius:8px;padding:12px}.metric strong{display:block;font-size:22px;color:var(--teal)}.data-table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}.data-table td,.data-table th{text-align:left;padding:9px;border-bottom:1px solid var(--line);vertical-align:top;overflow-wrap:anywhere;word-break:break-word;white-space:normal}.data-table th{overflow-wrap:normal}.event-table th:nth-child(1),.event-table td:nth-child(1){width:9%}.event-table th:nth-child(2),.event-table td:nth-child(2){width:9%}.event-table th:nth-child(3),.event-table td:nth-child(3){width:13%}.event-table th:nth-child(4),.event-table td:nth-child(4){width:69%}.data-table th{color:#91aabd}.tab-actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.bedhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.bedname{font-weight:800}.bedmeta{color:#88a0b3;font-size:12px}.count{margin-left:auto;color:#89a4b7;font:11px var(--mono)}.chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}.chip{font:italic 11px var(--mono);padding:3px 8px;border:1px solid #1b8d83;color:#4bd3c2;border-radius:5px;background:#0d2834}.chip.act{border-color:#a77734;color:#f4bb68;background:#2b2a27}.chip.edge{border-color:#506d83;color:#b2c7d5;background:#1b2d3c}.addbed{width:100%;margin-top:9px;border:1px dashed #2a4a5e;border-radius:8px;background:transparent;color:#8ba4b7;padding:10px}.subhead{color:#82a0b5;font-size:11px;letter-spacing:1.5px;font-weight:800;margin:17px 0 8px}.code{background:#0c1d2b;border:1px solid #1e3a4f;border-radius:8px;padding:11px;color:#8bcfc5;font:11px/1.65 var(--mono);white-space:pre-wrap;overflow:auto;max-height:210px}.right{padding:14px;align-self:start}.prop-title{display:flex;gap:10px;align-items:center;border-bottom:1px solid var(--line);padding-bottom:13px;margin-bottom:13px}.prop-title .glyph{width:28px;height:28px}.prop-title strong{display:block}.prop-title small{color:var(--muted);font-size:11px}.field-label{display:block;color:#8da8ba;font-size:10px;letter-spacing:1.1px;font-weight:800;margin:12px 0 5px}.field,select{width:100%;background:#0c1e2c;border:1px solid #244257;border-radius:6px;padding:9px 10px;color:#dceaf4}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.divider{height:1px;background:var(--line);margin:15px 0}.toggle-row{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#a8bdcb;font-size:12px;margin:11px 0}.toggle{width:33px;height:19px;border-radius:20px;background:#29465a;border:0;padding:2px}.toggle:after{content:"";display:block;width:15px;height:15px;border-radius:50%;background:#8ba2b5;transition:.15s}.toggle.on{background:#087c73}.toggle.on:after{transform:translateX(14px);background:#a5fff0}.status{color:var(--muted);font-size:12px;min-height:35px;background:#0d202e;border-radius:7px;padding:9px;margin-top:10px;white-space:pre-wrap}.footer{padding:0 20px 13px;color:#6f899c;font:11px var(--mono);display:flex;gap:18px;flex-wrap:wrap}.footer .ok{color:var(--green)}.alert-pop{position:fixed;right:22px;bottom:22px;top:auto;z-index:20;width:min(460px,calc(100vw - 28px));padding:14px 16px;border:1px solid #ff6b78;background:#351d29;color:#fff;border-radius:10px;box-shadow:0 14px 40px #0009;display:none}.alert-pop.warning{border-color:#f2b454;background:#342b1d}.alert-pop strong{display:block;margin-bottom:4px;font-size:13px;letter-spacing:.5px}.alert-pop p{margin:0;font-size:13px;line-height:1.45}.alert-pop button{float:right;background:transparent;border:0;color:inherit;font-size:18px}.hidden{display:none!important}
+@media(max-width:1100px){.layout{grid-template-columns:190px minmax(300px,1fr)}.right{grid-column:1/-1}.right .prop-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}.right .prop-title,.right .divider,.right .status{grid-column:1/-1}}@media(max-width:720px){header{height:auto;min-height:60px;flex-wrap:wrap;padding:10px}.saved{display:none}.tabs{order:3;width:100%;height:38px;overflow:auto}.layout{grid-template-columns:1fr;padding:9px}.side{display:grid;grid-template-columns:1fr 1fr;gap:0 8px}.side .section-label{grid-column:1/-1}.center{min-height:0}.right .prop-grid{display:block}.footer{padding:8px 12px}}
+</style></head><body>
+<header><div class="brand">♥ <span>MEDI</span>WATCH <small style="font-size:11px;color:#8ba2b5;font-weight:600">WARD BUILDER</small></div><nav class="tabs"><button class="active" data-tab="setup">Setup</button><button data-tab="rules">Rules</button><button data-tab="scenarios">Scenarios</button><button data-tab="monitor">Run &amp; monitor</button><button data-tab="sensor-faults">Sensor faults</button></nav><div class="saved" id="saveLabel">ward_config.json · loading</div><button class="btn" id="validate">Validate</button><button class="btn" id="saveOnly">Save</button><button class="btn teal" id="start">▶ Start Simulation</button><button class="btn warn" id="stop" disabled>■ Stop Simulation</button></header>
+<div class="alert-pop" id="alertPop" role="alert" aria-live="assertive"><button id="alertClose" aria-label="Dismiss alert">×</button><strong id="alertTitle">PATIENT ALERT</strong><p id="alertText"></p></div>
+<div class="layout">
+<aside class="panel side"><div class="section-label">PATIENTS</div><button class="component" data-add="patient"><span class="glyph">P</span> Patient <span class="plus">+</span></button><button class="component" data-add="bed"><span class="glyph">B</span> Bed <span class="plus">+</span></button>
+<div class="section-label">SENSORS</div><div id="sensorPalette"></div>
+<div class="section-label">EDGE &amp; NETWORK</div><button class="component" data-add="edge"><span class="glyph" style="background:#819db0">ES</span> Virtual ESP32 <span class="plus">+</span></button><button class="component" data-add="gateway"><span class="glyph" style="background:#819db0">GW</span> Ward gateway <span class="plus">+</span></button>
+<div class="section-label">ACTUATORS</div><div id="actPalette"></div><p class="hint">Select a bed, then add components or adjust its configuration in the properties panel.</p></aside>
+<main class="panel center"><div class="center-head"><h2 id="wardTitle">WARD CONFIGURATION</h2><span class="bedmeta" id="bedSummary">Loading beds…</span></div><div id="tabMessage" class="status hidden"></div><section id="tabContent" class="hidden tab-content"></section><div id="setupContent"><div class="bed-list" id="beds"></div><button class="addbed" id="addBed">＋ Add bed</button><div class="subhead">GENERATED CONFIGURATION · CONFIG/WARD_CONFIG.JSON</div><pre class="code" id="configCode">Loading configuration…</pre></div></main>
+<aside class="panel right"><div class="prop-title"><span class="glyph" id="propGlyph">O₂</span><div><strong id="propName">Patient properties</strong><small id="propMeta">Select a bed or component</small></div></div>
+<div class="prop-grid"><label class="field-label">SELECTED PATIENT / BED</label><select id="bedSelect" class="field"></select>
+<label class="field-label">PATIENT NAME</label><input class="field" id="patientName" placeholder="Enter patient name" autocomplete="off">
+<div class="grid2"><div><label class="field-label">AGE</label><input class="field" id="age" type="number" min="1" max="120"></div><div><label class="field-label">CONDITION</label><input class="field" id="condition" placeholder="e.g. observation"></div></div>
+<div class="hint" style="margin:6px 0 2px">Edit name, age or condition, then press Enter or click outside the field to save automatically.</div><label class="field-label">SCENARIO</label><select id="scenario" class="field"><option value="stable">Stable patient</option><option value="slow_deterioration">Gradual deterioration</option><option value="sudden_collapse">Sudden collapse</option></select>
+<div class="divider"></div><div class="section-label">MQTT / SIMULATION</div><label class="field-label">MONITORING MODE</label><select id="modeSelect" class="field"><option value="reactive">Reactive</option><option value="predictive">Predictive</option></select>
+<div class="toggle-row">Motion artefact model <button class="toggle on" id="motionToggle" aria-label="Toggle motion artefact"></button></div><div class="toggle-row">Clamp readings to plausible range <button class="toggle on" id="clampToggle" aria-label="Toggle range clamp"></button></div>
+<div class="divider"></div><label class="field-label">MANUAL VITALS · SELECTED BED</label><div class="grid2"><div><label class="field-label">HEART RATE (BPM)</label><input id="hr" class="field" type="number" value="78"></div><div><label class="field-label">SpO₂ (%)</label><input id="spo2" class="field" type="number" value="98"></div><div><label class="field-label">RESP. RATE</label><input id="rr" class="field" type="number" value="15"></div><div><label class="field-label">SYSTOLIC BP</label><input id="sbp" class="field" type="number" value="120"></div><div><label class="field-label">TEMP °C</label><input id="temp" class="field" type="number" step=".1" value="36.8"></div></div>
+<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:12px"><button class="btn teal" id="apply">Apply readings</button><button class="btn" id="normal">Normal example</button><button class="btn warn" id="collapse">Trigger collapse</button></div><div class="status" id="status">Select a patient bed to inspect or edit it.</div></div></aside></div>
+<footer class="footer"><span id="brokerStatus">Broker: checking…</span><span id="runStatus">Simulation: checking…</span><span id="configStatus">Config: ward_config.json</span><span>MQTT: configured broker</span></footer>
 <script>
-const LABELS = { hr: "Heart rate", spo2: "SpO\u2082 %", rr: "Breaths/min", sbp: "Systolic BP", temp: "Temp \u00b0C", consciousness: "ACVPU" };
-const BAND_TEXT = { "low": "Low", "low-medium": "Low-medium", "medium": "Medium", "high": "High" };
-const ACT_TEXT = { alarm: "Alarm", nurse_call: "Nurse call", oxygen: "Oxygen", bed_motor: "Bed raised" };
-const state = { status: {}, actuators: {}, events: [], history: {} };
+let config=null,selected=null,latest={},ws=null,alertTimer=null;const $=id=>document.getElementById(id);
+const sensorInfo={hr:['HR','Heart rate'],spo2:['O₂','Pulse oximeter'],rr:['RR','Respiration'],sbp:['BP','Blood pressure'],temp:['T','Temperature'],consciousness:['CS','Consciousness'],fall:['FL','Fall / accelerometer'],bed_occupancy:['BD','Bed occupancy']};
+const actuatorInfo={oxygen:['O₂','Oxygen valve'],nurse_call:['NC','Nurse call'],bed_motor:['BH','Bed head motor'],alarm:['AL','Alarm / room light']};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function api(url,opts={}){let r=await fetch(url,{headers:{'Content-Type':'application/json'},...opts});let d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'HTTP '+r.status);return d}
+function bed(){return config?.beds?.find(b=>String(b.id)===String(selected))||config?.beds?.[0]}
+function status(b){let v=latest[b.id]||{};if(v.monitoring_incomplete||Object.keys(v.sensor_faults||{}).length||v.invalid?.length||v.stale?.length)return ['SENSOR FAULT','var(--amber)'];if(v.band==='high'||v.band==='red'||v.state==='emergency'||(v.spo2!=null&&+v.spo2<90)||(v.hr!=null&&(+v.hr<40||+v.hr>130))||(v.rr!=null&&+v.rr>28)||(v.sbp!=null&&+v.sbp<85)||(v.temp!=null&&+v.temp>=39.5))return ['HIGH RISK','var(--red)'];if(v.band==='medium'||v.band==='low-medium'||v.band==='amber'||v.state==='early'||(v.spo2!=null&&+v.spo2<94)||(v.hr!=null&&(+v.hr>110||+v.hr<50))||(v.rr!=null&&+v.rr>22)||(v.sbp!=null&&+v.sbp<100)||(v.temp!=null&&+v.temp>=38))return ['REVIEW','var(--amber)'];return ['STABLE','var(--green)']}
+function renderPalette(){ $('sensorPalette').innerHTML=Object.entries(sensorInfo).map(([k,v])=>`<button class="component" data-sensor="${k}"><span class="glyph">${v[0]}</span>${v[1]}<span class="plus">+</span></button>`).join('');$('actPalette').innerHTML=Object.entries(actuatorInfo).map(([k,v])=>`<button class="component" data-act="${k}"><span class="glyph" style="background:#d89a39">${v[0]}</span>${v[1]}<span class="plus">+</span></button>`).join('')}
+function render(){if(!config)return;$('bedSummary').textContent=`${config.beds.length} BEDS · ${config.beds.reduce((n,b)=>n+(b.sensors||[]).length,0)} SENSORS`; $('bedSelect').innerHTML=config.beds.map(b=>`<option value="${esc(b.id)}">${esc(b.id)} · ${esc(b.name||'Patient')}</option>`).join('');$('bedSelect').value=selected;
+$('beds').innerHTML=config.beds.map((b,i)=>{let [st,c]=status(b),v=latest[b.id]||{};let chips=(b.sensors||[]).map(k=>`<span class="chip" data-sensor="${esc(k)}">${esc(sensorInfo[k]?.[0]||k)}</span>`).join('')+`<span class="chip edge">esp32-0${i+1}</span>`+(b.actuators||[]).map(k=>`<span class="chip act">${esc(actuatorInfo[k]?.[0]||k)}</span>`).join('');let risk=st==='HIGH RISK'?'risk-high':st==='REVIEW'?'risk-review':'';let vit=`HR ${v.hr??'—'} · SpO₂ ${v.spo2??'—'} · RR ${v.rr??'—'} · SBP ${v.sbp??'—'} · T ${v.temp??'—'}${v.ml_risk?` · ML ${v.ml_risk.label} ${(v.ml_risk.probability*100).toFixed(0)}%`:''}`;return `<article class="bed ${risk} ${String(b.id)===String(selected)?'selected':''}" data-bed="${esc(b.id)}"><div class="bedhead"><span class="bedname">${esc(b.name||'Patient')} · ${esc(b.id)}</span><span class="bedmeta">${esc(b.age??'—')} · ${esc(b.condition||'observation')}</span><span class="count" style="color:${c}">${st}</span></div><div class="chips">${chips}</div><div class="vital-mini">${esc(vit)}</div></article>`}).join('');
+$('configCode').textContent=JSON.stringify(config,null,2);let b=bed();if(b){if(document.activeElement!==$('patientName'))$('patientName').value=b.name||'';if(document.activeElement!==$('age'))$('age').value=b.age??'';if(document.activeElement!==$('condition'))$('condition').value=b.condition||'';if(document.activeElement!==$('scenario'))$('scenario').value=b.scenario||'stable';$('propName').textContent='Patient / bed properties';$('propMeta').textContent=`${b.id} · ${b.condition||'virtual patient'}`;$('propGlyph').textContent='P'} }
+async function load(){config=await api('/api/config');selected=selected||config.beds[0]?.id;let sc=await api('/api/scenarios');const scenarioNames={stable:'Stable patient',slow_deterioration:'Gradual deterioration',sudden_collapse:'Sudden collapse'};$('scenario').innerHTML=(sc.scenarios||[]).map(k=>`<option value="${esc(k)}">${esc(scenarioNames[k]||k.replaceAll('_',' '))}</option>`).join('');render();$('modeSelect').value=config.mode||'predictive';checkState()}
+function log(s){$('status').textContent=s}
+function comparisonTable(r){if(!r||(!r.reactive&&!r.predictive))return '<p class="bedmeta">No comparison results yet. Click Compare reactive vs predictive to run both modes on the same ward setup.</p>';const R=r.reactive?.rows||[],P=r.predictive?.rows||[],ids=[...new Set([...R,...P].map(x=>x.bed))].sort(),get=(a,id)=>a.find(x=>x.bed===id)||{};const val=x=>x==null?'—':x;return '<table class="data-table"><thead><tr><th>Bed</th><th>Peak score · Reactive</th><th>Peak score · Predictive</th><th>High-risk seconds · Reactive</th><th>High-risk seconds · Predictive</th><th>Emergency calls · R</th><th>Early help · P</th></tr></thead><tbody>'+ids.map(id=>{let a=get(R,id),b=get(P,id);return `<tr><td>${esc(id)}</td><td>${val(a.peak)}</td><td>${val(b.peak)}</td><td>${val(a.red)}</td><td>${val(b.red)}</td><td>${val(a.emergencies)}</td><td>${val(b.early)}</td></tr>`}).join('')+'</tbody></table><p class="bedmeta">Reactive run: '+(r.reactive?.run_id??'—')+' · Predictive run: '+(r.predictive?.run_id??'—')+'</p>'}
+function showAlert(bedId,event){const critical=['emergency','urgent','intervention','early','sensor_fault','sensor_fault_detected','sensor_invalid'].includes(event.kind);const sensorEvent=String(event.kind||'').startsWith('sensor_');$('alertTitle').textContent=(sensorEvent?'SENSOR FAULT':(critical?'ACTION REQUIRED':'PATIENT UPDATE'))+' · '+String(bedId||'WARD').replace('bed','Bed ');$('alertText').textContent=event.text||'A patient status update was received.';$('alertPop').classList.toggle('warning',!critical);$('alertPop').style.display='block';clearTimeout(alertTimer);alertTimer=setTimeout(()=>$('alertPop').style.display='none',12000)}
+$('alertClose').onclick=()=>$('alertPop').style.display='none';
+$('beds').onclick=e=>{let el=e.target.closest('[data-bed]');if(el){selected=el.dataset.bed;render()}};
+$('bedSelect').onchange=e=>{selected=e.target.value;render()};
+function updatePatientDraft(){const b=bed();if(!b)return;b.name=$('patientName').value.trim();const ageText=$('age').value.trim();if(ageText!==''){const ageValue=Number(ageText);if(Number.isFinite(ageValue)&&ageValue>=1&&ageValue<=120)b.age=ageValue;}b.condition=$('condition').value.trim();b.scenario=$('scenario').value;}
+let patientSaveBusy=false;
+async function commitPatientDetails(){const b=bed();if(!b)return;updatePatientDraft();if(patientSaveBusy)return;patientSaveBusy=true;const ok=await save();patientSaveBusy=false;if(ok){render();log(`Saved patient details for ${b.id}: ${b.name||'Unnamed patient'}, age ${b.age}, condition ${b.condition||'not specified'}.`);}else{log('Patient details could not be saved. Stop the simulation first, then press Enter or leave the field to save.');}}
+['patientName','age','condition'].forEach(id=>{$(id).addEventListener('input',updatePatientDraft);$(id).addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();commitPatientDetails();}});$(id).addEventListener('change',commitPatientDetails);});
+$('scenario').addEventListener('change',commitPatientDetails);
+$('patientName').title='Click the field and type a new name. Press Enter or click outside the field to save.';
+$('age').title='Enter an age from 1 to 120. Press Enter or click outside the field to save.';
+$('condition').title='Enter the patient condition. Press Enter or click outside the field to save.';
+$('sensorPalette').onclick=e=>{let el=e.target.closest('[data-sensor]');if(!el||!bed())return;let b=bed(),k=el.dataset.sensor;b.sensors=b.sensors||[];if(!b.sensors.includes(k))b.sensors.push(k);render();log(`${sensorInfo[k][1]} added to ${b.id}. Save configuration to persist.`)};
+$('actPalette').onclick=e=>{let el=e.target.closest('[data-act]');if(!el||!bed())return;let b=bed(),k=el.dataset.act;b.actuators=b.actuators||[];if(!b.actuators.includes(k))b.actuators.push(k);render();log(`${actuatorInfo[k][1]} added to ${b.id}. Save configuration to persist.`)};
+document.querySelectorAll('[data-add]').forEach(el=>el.onclick=()=>{if(el.dataset.add==='bed'||el.dataset.add==='patient')addBed();else {let b=bed();if(!b)return; b.edge=b.edge||{};b.edge.id=b.edge.id||('esp32-'+String(b.id).replace('bed',''));b.edge.network=el.dataset.add==='gateway'?'ward-gateway':'virtual-mqtt';render();log((el.dataset.add==='edge'?'Virtual ESP32':'Ward gateway')+' configured for '+b.id+'. Click Save to persist it.')}});
+async function save(){try{config.mode=$('modeSelect').value;await api('/api/config',{method:'POST',body:JSON.stringify(config)});$('saveLabel').textContent='ward_config.json · saved';$('configStatus').textContent='Config: saved';log('Configuration saved successfully.');return true}catch(e){log(e.message);return false}}
+async function addBed(){let n=config.beds.length+1,id='bed'+n;while(config.beds.some(b=>b.id===id)){n++;id='bed'+n}config.beds.push({id,name:'Patient '+n,age:50,condition:'observation',scenario:'stable',sensors:['hr','spo2','rr','sbp','temp'],actuators:['nurse_call','alarm']});selected=id;render();log('New bed added. Click Save to persist it.')}
+$('addBed').onclick=addBed;$('saveOnly').onclick=async()=>{if(await save())log('Configuration saved to config/ward_config.json.');};
+$('validate').onclick=()=>{const issues=[];const beds=Array.isArray(config?.beds)?config.beds:[];if(!beds.length)issues.push('Add at least one patient bed.');const ids=new Set();beds.forEach((b,i)=>{const id=String(b?.id||'').trim();if(!id)issues.push(`Bed ${i+1}: missing bed ID.`);else if(ids.has(id))issues.push(`Duplicate bed ID: ${id}.`);else ids.add(id);if(!String(b?.name||'').trim())issues.push(`${id||'Bed '+(i+1)}: patient name is missing.`);if(!Array.isArray(b?.sensors)||!b.sensors.length)issues.push(`${id||'Bed '+(i+1)}: add at least one sensor.`);if(!['stable','slow_deterioration','sudden_collapse'].includes(b?.scenario))issues.push(`${id||'Bed '+(i+1)}: choose a valid scenario.`)});const box=$('tabMessage');box.classList.remove('hidden');box.style.borderColor=issues.length?'var(--amber)':'var(--green)';box.style.color=issues.length?'#ffd28a':'#8ff0c7';box.textContent=issues.length?`Validation found ${issues.length} issue(s): ${issues.join(' ')}`:`Configuration valid — ${beds.length} bed(s), unique IDs, patient names, sensors and scenarios checked. You can now start the simulation.`;log(issues.length?'Please fix the validation issues shown above.':'Validation successful. Configuration is ready to run.');box.scrollIntoView({behavior:'smooth',block:'nearest'});};
+$('start').onclick=async()=>{try{if(!await save())return;let d=await api('/api/start',{method:'POST',body:JSON.stringify({mode:$('modeSelect').value})});log('Simulation started in '+d.mode+' mode. Live readings should arrive shortly.');$('tabMessage').classList.remove('hidden');$('tabMessage').textContent='Simulation is running in '+d.mode+' mode. Use Stop Simulation to stop and automatically save the run.';checkState()}catch(e){log(e.message)}};$('stop').onclick=async()=>{try{const d=await api('/api/stop',{method:'POST',body:JSON.stringify({})});log(d.saved?'Simulation stopped. The readings and events collected so far have been saved.':'Simulation stopped.');$('tabMessage').classList.remove('hidden');$('tabMessage').textContent=d.saved?'Simulation stopped. All readings, alerts and events collected so far have been saved. Click Start Simulation to begin a new run.':'Simulation stopped.';checkState()}catch(e){log(e.message)}};
+$('normal').onclick=()=>{Object.entries({hr:78,spo2:98,rr:15,sbp:120,temp:36.8}).forEach(([k,v])=>$(k).value=v);log('Normal example loaded. Click Apply readings to publish it.')};
+$('apply').onclick=async()=>{try{let values={};['hr','spo2','rr','sbp','temp'].forEach(k=>values[k]=Number($(k).value));let d=await api('/api/manual-readings',{method:'POST',body:JSON.stringify({bed:selected,values})});log('Readings published for '+d.bed+': '+JSON.stringify(d.sent))}catch(e){log(e.message)}};
+$('collapse').onclick=async()=>{try{await api('/api/inject/'+selected,{method:'POST'});log('Collapse event injected for '+selected)}catch(e){log(e.message)}};
+async function showTab(t){document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));const setup=$('setupContent'),box=$('tabContent');if(t==='setup'){setup.classList.remove('hidden');box.classList.add('hidden');$('wardTitle').textContent='WARD CONFIGURATION';return}setup.classList.add('hidden');box.classList.remove('hidden');box.innerHTML='<div class="status">Loading…</div>';try{if(t==='sensor-faults'){
+let faults=await api('/api/sensor-faults');
+const sensorOptions=(bed()?.sensors||[]).map(k=>`<option value="${esc(k)}">${esc(sensorInfo[k]?.[1]||k)}</option>`).join('');
+box.innerHTML=`<h3>Sensor Fault Simulation</h3>
+<p class="bedmeta">Inject faults into a configured virtual sensor while the simulation is running. Faults affect the sensor stream, and the monitoring engine reports unavailable or invalid data separately from patient deterioration.</p>
+<div class="grid2">
+<div><label class="field-label">PATIENT BED</label><select class="field" id="faultBed">${config.beds.map(b=>`<option value="${esc(b.id)}" ${String(b.id)===String(selected)?'selected':''}>${esc(b.id)} · ${esc(b.name||'Patient')}</option>`).join('')}</select></div>
+<div><label class="field-label">SENSOR</label><select class="field" id="faultSensor">${sensorOptions}</select></div>
+</div>
+<div class="grid2">
+<div><label class="field-label">FAULT TYPE</label><select class="field" id="faultType">
+<option value="disconnected">Sensor disconnected</option><option value="frozen">Frozen reading</option><option value="noisy">Noisy reading (median filtering)</option><option value="communication_dropout">Communication dropout</option><option value="invalid">Invalid reading</option>
+</select></div>
+<div><label class="field-label">DURATION · SIMULATED SECONDS</label><input class="field" id="faultDuration" type="number" min="1" max="3600" value="30"></div>
+</div>
+<div class="tab-actions"><button class="btn warn" id="applyFault">Apply fault</button><button class="btn" id="clearFault">Restore selected sensor</button><button class="btn" id="refreshFaults">Refresh status</button></div>
+<div class="status" id="faultHelp">Select a bed and sensor, choose a fault, then apply it during a running simulation. A duration of 30 means 30 simulated seconds.</div>
+<h3>Active sensor faults</h3><div id="activeFaults"></div>
+<h3>Noisy sensor filtering result</h3><div class="status" id="noiseResult">Apply a noisy-reading fault to view raw and filtered readings here.</div>
+<h3>Sensor fault event history</h3><div id="faultHistory"></div>
+<p class="bedmeta">Safety behaviour: stale, frozen, disconnected, communication-dropped and invalid measurements pause NEWS2/ML scoring for the affected bed until valid readings resume. Noisy readings use a rolling median of up to five samples.</p>`;
+const refreshFaultPanel=async()=>{let f=await api('/api/sensor-faults');$('activeFaults').innerHTML=f.active.length?'<table class="data-table"><thead><tr><th>Bed</th><th>Sensor</th><th>Fault</th><th>Since (sim s)</th></tr></thead><tbody>'+f.active.map(x=>`<tr><td>${esc(x.bed)}</td><td>${esc(x.sensor)}</td><td>${esc(x.fault)}</td><td>${x.t??'—'}</td></tr>`).join('')+'</tbody></table>':'<p class="bedmeta">No active sensor faults.</p>';
+$('faultHistory').innerHTML=f.events.length?'<table class="data-table"><thead><tr><th>Bed</th><th>Time</th><th>Event</th><th>Details</th></tr></thead><tbody>'+f.events.slice().reverse().map(x=>`<tr><td>${esc(x.bed)}</td><td>${x.t??'—'}s</td><td>${esc(x.kind)}</td><td>${esc(x.text||x.fault||'')}</td></tr>`).join('')+'</tbody></table>':'<p class="bedmeta">No sensor fault events recorded in this run.</p>'};
+$('faultBed').onchange=()=>{let b=config.beds.find(x=>x.id===$('faultBed').value);$('faultSensor').innerHTML=(b?.sensors||[]).map(k=>`<option value="${esc(k)}">${esc(sensorInfo[k]?.[1]||k)}</option>`).join('')};
+$('applyFault').onclick=async()=>{try{let payload={bed:$('faultBed').value,sensor:$('faultSensor').value,fault:$('faultType').value,duration_s:Number($('faultDuration').value)};let d=await api('/api/sensor-fault',{method:'POST',body:JSON.stringify(payload)});$('faultHelp').textContent=d.message+' Detection and recovery events will appear below.';log(`Applied ${payload.fault.replaceAll('_',' ')} fault to ${payload.sensor} on ${payload.bed}.`);showAlert(payload.bed,{kind:'sensor_fault',text:`${payload.sensor.toUpperCase()} fault injected: ${payload.fault.replaceAll('_',' ')}`});setTimeout(refreshFaultPanel,500)}catch(e){$('faultHelp').textContent=e.message;log(e.message)}};
+$('clearFault').onclick=async()=>{try{let payload={bed:$('faultBed').value,sensor:$('faultSensor').value,action:'clear'};let d=await api('/api/sensor-fault',{method:'POST',body:JSON.stringify(payload)});$('faultHelp').textContent=d.message+' Waiting for a fresh valid reading before restoring monitoring.';log(`Restore requested for ${payload.sensor} on ${payload.bed}.`);setTimeout(refreshFaultPanel,500)}catch(e){$('faultHelp').textContent=e.message;log(e.message)}};
+$('refreshFaults').onclick=refreshFaultPanel;
+await refreshFaultPanel();$('wardTitle').textContent='SENSOR FAULT SIMULATION';
+}else if(t==='rules'){let d=await api('/api/scenarios');box.innerHTML='<h3>Clinical alert rules (NEWS2-style)</h3><p class="bedmeta">Rule thresholds used by the current rule engine. These are educational simulation settings, not clinical advice.</p><pre class="code">'+esc(JSON.stringify(d.rules,null,2))+'</pre><div class="tab-actions"><button class="btn teal" id="reloadRules">Refresh rules</button></div>'; $('reloadRules').onclick=()=>showTab('rules');$('wardTitle').textContent='RULES & ALERT THRESHOLDS'}else if(t==='scenarios'){let d=await api('/api/scenarios');box.innerHTML='<h3>Simulation scenarios</h3><p class="bedmeta">Choose a scenario in the Setup properties panel, then click Start Simulation. Profiles are simplified synthetic scenarios.</p><div class="metric-grid">'+Object.entries(d.profiles||{}).map(([k,v])=>`<div class="metric"><strong>${esc(({stable:'Stable patient',slow_deterioration:'Gradual deterioration',sudden_collapse:'Sudden collapse'})[k]||k.replaceAll('_',' '))}</strong><div class="bedmeta">Starting severity: ${Number(v.start_severity??0).toFixed(2)}</div><div class="bedmeta">Deterioration rate: ${Number(v.drift_per_s??0).toFixed(4)} / simulated second</div><div class="bedmeta">Collapse trigger: ${v.collapse_at_s==null?'Not scheduled':v.collapse_at_s+' s'}</div><div class="bedmeta">${k==='stable'?'Vitals remain broadly stable.':k==='slow_deterioration'?'Vitals gradually worsen over simulated time.':'A sudden deterioration is introduced at the configured time.'}</div><button class="btn" data-pick-scenario="${esc(k)}">Use for selected bed</button></div>`).join('')+'</div>';box.querySelectorAll('[data-pick-scenario]').forEach(b=>b.onclick=()=>{let patient=bed();if(patient){patient.scenario=b.dataset.pickScenario;$('scenario').value=patient.scenario;render();log('Scenario selected. Click Save & start simulation to save it.')}});$('wardTitle').textContent='SCENARIO LIBRARY'}else{let d=await api('/api/analytics');let comparison=await api('/api/results');box.innerHTML='<h3>Run monitor & analytics</h3><h3>Reactive vs Predictive comparison</h3>'+comparisonTable(comparison)+'<div class="metric-grid"><div class="metric"><span class="bedmeta">Saved runs</span><strong>'+d.runs.length+'</strong></div><div class="metric"><span class="bedmeta">Latest mode</span><strong style="font-size:18px">'+esc(d.latest?.mode||'—')+'</strong></div><div class="metric"><span class="bedmeta">Beds with results</span><strong>'+d.beds.length+'</strong></div><div class="metric"><span class="bedmeta">Recent decisions</span><strong>'+d.events.length+'</strong></div></div><div class="tab-actions"><button class="btn teal" id="refreshAnalytics">Refresh analytics</button><button class="btn" id="compareRuns">Compare reactive vs predictive</button><button class="btn" id="downloadHistory">View selected patient history</button></div><h3>Latest run by bed</h3><table class="data-table"><thead><tr><th>Bed</th><th>Samples</th><th>Peak NEWS2</th><th>High-risk samples</th><th>Duration</th></tr></thead><tbody>'+d.beds.map(r=>`<tr><td>${esc(r.bed)}</td><td>${r.samples}</td><td>${r.peak_score??'—'}</td><td>${r.high_risk_samples??0}</td><td>${r.duration_s??0}s</td></tr>`).join('')+'</tbody></table><h3>Previous simulation runs</h3><table class="data-table"><thead><tr><th>Run</th><th>Mode</th><th>Started</th><th>Beds configured</th></tr></thead><tbody>'+d.runs.map(r=>`<tr><td>#${r.run_id}</td><td>${esc(r.mode)}</td><td>${new Date(r.started*1000).toLocaleString()}</td><td>${r.config?.beds?.length??'—'}</td></tr>`).join('')+'</tbody></table><h3>Recent decisions / alerts</h3><table class="data-table"><thead><tr><th>Bed</th><th>Time</th><th>Type</th><th>Details</th></tr></thead><tbody>'+d.events.map(r=>`<tr><td>${esc(r.bed)}</td><td>${r.t}s</td><td>${esc(r.kind)}</td><td>${esc(typeof r.detail==='string'?r.detail:JSON.stringify(r.detail))}</td></tr>`).join('')+'</tbody></table>'; $('wardTitle').textContent='RUN MONITOR & ANALYTICS';$('refreshAnalytics').onclick=()=>showTab('monitor');$('compareRuns').onclick=async()=>{try{await api('/api/compare',{method:'POST'});log('Comparison running: MEDIWATCH is testing the same ward in Reactive and Predictive modes. This may take a short while.');$('compareRuns').disabled=true;let attempts=0;const poll=setInterval(async()=>{try{const st=await api('/api/compare-status');attempts++;if(!st.running){clearInterval(poll);$('compareRuns').disabled=false;await showTab('monitor');log('Comparison completed. The results table below now shows Reactive versus Predictive results.')}else if(attempts>180){clearInterval(poll);$('compareRuns').disabled=false;log('Comparison is taking longer than expected. Check the server terminal, then refresh Run & monitor.')}}catch(e){clearInterval(poll);$('compareRuns').disabled=false;log(e.message)}},1000)}catch(e){log(e.message)}};$('downloadHistory').onclick=async()=>{try{let d=await api('/api/history/'+encodeURIComponent(selected));let rows=d.scores.slice(0,30);box.insertAdjacentHTML('beforeend','<h3>Selected patient score history · '+esc(selected)+'</h3><table class="data-table"><thead><tr><th>Run</th><th>Time</th><th>NEWS2</th><th>Band</th></tr></thead><tbody>'+rows.map(r=>`<tr><td>${r.run_id}</td><td>${r.t}s</td><td>${r.score}</td><td>${esc(r.band)}</td></tr>`).join('')+'</tbody></table>')}catch(e){log(e.message)}}}}catch(e){box.innerHTML='<div class="status">'+esc(e.message)+'</div>'}}
+document.querySelectorAll('[data-tab]').forEach(btn=>btn.onclick=()=>showTab(btn.dataset.tab));
+function checkState(){api('/api/state').then(d=>{$('brokerStatus').innerHTML='Broker: '+(d.state?.broker?'<span class="ok">connected</span>':'disconnected');$('runStatus').textContent='Simulation: '+(d.state?.running?'running ('+d.state.mode+')':'stopped');const busy=!!d.state?.running||!!d.state?.stopping||!!d.state?.comparing;$('start').disabled=busy;$('stop').disabled=!d.state?.running||!!d.state?.stopping;$('saveOnly').disabled=busy;$('modeSelect').disabled=busy;if(d.snapshot?.status){for(const [k,v] of Object.entries(d.snapshot.status)){latest[k]={...latest[k],...(v.vitals||{}),raw_vitals:v.raw_vitals,score:v.score,band:v.band,state:v.state,ml_risk:v.ml_risk,sensor_faults:v.sensor_faults||latest[k]?.sensor_faults,monitoring_incomplete:v.monitoring_incomplete,stale:v.stale,invalid:v.invalid}}render()}}).catch(()=>{})}
+function connect(){try{ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws');ws.onmessage=e=>{let d=JSON.parse(e.data);if(d.type==='snapshot'&&d.data?.status){for(const [k,v] of Object.entries(d.data.status)){latest[k]={...latest[k],...(v.vitals||{}),raw_vitals:v.raw_vitals,score:v.score,band:v.band,state:v.state,ml_risk:v.ml_risk,sensor_faults:v.sensor_faults||latest[k]?.sensor_faults,monitoring_incomplete:v.monitoring_incomplete,stale:v.stale,invalid:v.invalid}}render()}if(d.type==='mqtt'){let topic=d.topic||'',m=d.data||{};let match=topic.match(/^ward\/([^/]+)\/vitals\/([^/]+)$/);if(match){let p=m;latest[match[1]]=latest[match[1]]||{};latest[match[1]][match[2]]=p?.value??p;render()}let stat=topic.match(/^ward\/([^/]+)\/status$/);if(stat){latest[stat[1]]={...latest[stat[1]],...(m.vitals||{}),raw_vitals:m.raw_vitals,score:m.score,band:m.band,state:m.state,ml_risk:m.ml_risk,sensor_faults:m.sensor_faults||latest[stat[1]]?.sensor_faults,monitoring_incomplete:m.monitoring_incomplete,stale:m.stale,invalid:m.invalid};render();const nr=$('noiseResult');if(nr&&m.sensor_faults){const noisy=Object.keys(m.sensor_faults).find(k=>m.sensor_faults[k]==='noisy');if(noisy){nr.textContent=`${noisy.toUpperCase()} · raw: ${m.raw_vitals?.[noisy]??'—'} · filtered (median): ${m.vitals?.[noisy]??'—'}`}}}if(topic.includes('/event')){log(topic+' · '+(m.text||JSON.stringify(m)));showAlert(topic.split('/')[1],m);if(['sensor_fault','sensor_recovered','sensor_invalid'].includes(m.kind)&&document.querySelector('[data-tab="sensor-faults"]').classList.contains('active'))showTab('sensor-faults')}if(topic==='ward/control'&&['finished','stopped'].includes(m.state))log(m.state==='stopped'?'Simulation stopped. All readings up to this point were saved.':'Simulation completed; results saved in sim.db. Open Run & monitor for analytics.')}};ws.onclose=()=>setTimeout(connect,2500)}catch{}}
 
-const fmtTime = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
-
-function sparkline(points) {
-  if (points.length < 2) return "";
-  const w = 300, h = 44, max = 14;
-  const t0 = points[0][0], span = Math.max(1, points[points.length - 1][0] - t0);
-  const xy = points.map(([t, s]) => `${((t - t0) / span * w).toFixed(1)},${(h - Math.min(s, max) / max * h).toFixed(1)}`).join(" ");
-  const y7 = h - 7 / max * h, y5 = h - 5 / max * h;
-  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-label="Score over the last two minutes">
-    <line x1="0" x2="${w}" y1="${y7}" y2="${y7}" stroke="#CC3333" stroke-dasharray="3 3" stroke-width="1"/>
-    <line x1="0" x2="${w}" y1="${y5}" y2="${y5}" stroke="#E27B2E" stroke-dasharray="3 3" stroke-width="1"/>
-    <polyline points="${xy}" fill="none" stroke="#18262E" stroke-width="1.6"/></svg>`;
-}
-
-function predictionText(s) {
-  if (s.state === "emergency") return "Emergency response in progress.";
-  if (s.state === "early") return "Early intervention in progress. Waiting for readings to settle.";
-  const p = s.prediction;
-  if (!p) return "Collecting a minute of readings before looking ahead.";
-  if (!p.heading_for_danger) return `Look-ahead: stable. Highest score expected in 5 min <b>${p.predicted_max_score}</b>.`;
-  const act = s.mode === "predictive" ? `Chosen: <b>${p.choice.replace("_", " ")}</b>` : "Reactive mode: no early action";
-  return `Heading for <b>${p.predicted_max_score}</b> in about <b>${fmtTime(p.danger_in_s)}</b>. ${act}.`;
-}
-
-function renderBeds() {
-  const ids = Object.keys(state.status).sort();
-  const root = document.getElementById("beds");
-  if (!ids.length) return;
-  root.innerHTML = ids.map(id => {
-    const s = state.status[id];
-    if (!s.vitals) return `<article class="bed"><div class="scorecol"><span class="num">-</span></div>
-      <div class="body"><strong>${id}</strong><p class="empty">Waiting for: ${(s.waiting_for || []).join(", ")}</p></div></article>`;
-    const acts = state.actuators[id] || {};
-    const vitals = Object.keys(LABELS).map(k => {
-      const pts = s.parts[k] || 0, stale = (s.stale || []).includes(k);
-      const val = k === "sbp" ? `${s.vitals[k]}` : s.vitals[k];
-      return `<div class="vital pts${pts}${stale ? " stale" : ""}"><small>${LABELS[k]}</small><b>${val}</b></div>`;
-    }).join("");
-    const chips = Object.keys(acts).map(a => `<span class="chip${acts[a] ? " on" : ""}">${ACT_TEXT[a] || a}</span>`).join("");
-    return `<article class="bed band-${s.band} state-${s.state}">
-      <div class="scorecol"><span class="num">${s.score}</span><span class="band">${BAND_TEXT[s.band]} risk${s.on_oxygen ? "<br>on O\u2082" : ""}</span></div>
-      <div class="body">
-        <div class="who"><strong>${id.replace("bed", "Bed ")} \u2013 ${s.name}</strong><span>${s.age} y<br>${s.condition}</span></div>
-        <div class="vitals">${vitals}</div>
-        <div class="chips">${chips}</div>
-        ${sparkline(state.history[id] || [])}
-        <div class="predict">${predictionText(s)}</div>
-      </div></article>`;
-  }).join("");
-}
-
-function renderEvents() {
-  const ol = document.getElementById("events");
-  if (!state.events.length) return;
-  ol.innerHTML = state.events.slice().reverse().map(e =>
-    `<li class="${e.kind}"><time>${fmtTime(e.t)}</time><b>${(e.bed || "").replace("bed", "Bed ")}</b> ${e.text}</li>`).join("");
-}
-
-function handle(msg) {
-  if (msg.type === "snapshot") {
-    Object.assign(state, msg.data, { history: {} });
-  } else if (msg.type === "status") {
-    state.status[msg.bed] = msg.data;
-    if (msg.data.score !== undefined) {
-      const h = (state.history[msg.bed] ||= []);
-      h.push([msg.data.t, msg.data.score]);
-      while (h.length && h[0][0] < msg.data.t - 120) h.shift();
-    }
-    document.getElementById("clock").textContent = fmtTime(msg.data.t);
-    document.getElementById("mode").textContent = msg.data.mode || "-";
-  } else if (msg.type === "actuators") {
-    state.actuators[msg.bed] = msg.data;
-  } else if (msg.type === "event") {
-    state.events.push(Object.assign({ bed: msg.bed }, msg.data));
-    renderEvents();
-  } else if (msg.type === "control" && msg.data.state === "started") {
-    Object.assign(state, { status: {}, actuators: {}, events: [], history: {} });
-    document.getElementById("events").innerHTML = '<li class="empty">No events yet.</li>';
-  }
-  scheduleRender();
-}
-
-let pending = false;
-function scheduleRender() {
-  if (pending) return;
-  pending = true;
-  requestAnimationFrame(() => { pending = false; renderBeds(); renderEvents(); });
-}
-
-function connect() {
-  const conn = document.getElementById("conn");
-  const ws = new WebSocket(`ws://${location.host}/ws`);
-  ws.onopen = () => { conn.textContent = "Live"; conn.className = "meta"; };
-  ws.onmessage = e => handle(JSON.parse(e.data));
-  ws.onclose = () => { conn.textContent = "Disconnected - retrying"; conn.className = "meta off"; setTimeout(connect, 2000); };
-}
-connect();
-</script>
-</body>
-</html>
+renderPalette();load().catch(e=>log('Cannot load ward config: '+e.message));connect();setInterval(checkState,3000);
+</script></body></html>
