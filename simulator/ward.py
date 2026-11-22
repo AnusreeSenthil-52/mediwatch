@@ -64,6 +64,7 @@ def main():
     client.subscribe("ward/+/sensor_cfg")
     client.subscribe("ward/+/inject")
     client.subscribe("ward/+/manual_vitals")
+    client.subscribe("ward/+/sensor_fault")
     client.subscribe("ward/admin")
     client.loop_start()
 
